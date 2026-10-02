@@ -126,6 +126,10 @@ Infrastructure implements contracts defined by the inner layers.
 
 ```text
 MessengerHub/
+├── .agents/
+│   └── skills/                  # AI agent skills (postgres-best-practices, prisma-pgvector, mongodb-nestjs, llm-tool-calling, docker-setup)
+├── .opencode/
+│   └── opencode.json            # OpenCode agents and commands config
 ├── apps/
 │   ├── api/                        # NestJS backend (API + Worker)
 │   │   └── src/
@@ -143,6 +147,11 @@ MessengerHub/
 │           ├── assets/
 │           └── environments/
 ├── docs/                           # Seed data (knowledge base documents)
+├── plans/                          # Task plans
+│   ├── backlog/                    # Pending tasks
+│   ├── inProgress/                 # Active tasks
+│   ├── completed/                  # Finished tasks
+│   └── master_plan.md              # High-level implementation overview
 ├── scripts/                        # Database seeding and setup scripts
 ├── DECISIONS.md
 ├── DESIGN.md
@@ -639,6 +648,24 @@ Backend responsibilities:
 
 Business logic must be testable without external infrastructure.
 
+### Testing strategy
+
+Write tests **alongside implementation**, not as a separate phase. Each task should include its own tests:
+
+| Task | Tests to write |
+|------|----------------|
+| T-1.2 (Domain) | Domain entity tests (status transitions, validation rules) |
+| T-2.3 (Commands) | Handler tests with mock repositories |
+| T-3.3 (Tool Validation) | Zod schema tests (valid/invalid inputs) |
+| T-3.4 (Orchestration) | Orchestrator tests with MockLLMService |
+| T-5.1 (Controllers) | Controller tests with mocked CommandBus/QueryBus |
+| T-6.1 (Angular Foundation) | ApiService tests with mocked HttpClient |
+| T-6.2 (Conversation Inbox) | Component tests: renders list, loading/error/empty states, filter, pagination |
+| T-6.3 (Conversation Detail) | Component tests: messages timeline, AI traces expand/collapse |
+| T-6.4 (Simulator) | Component tests: form validation, send message, success/error states |
+
+This prevents testing debt and ensures coverage grows incrementally.
+
 Unit tests should use:
 
 ```text
@@ -817,3 +844,46 @@ Understandable
 ```
 
 The purpose of the architecture is to make future changes easier without introducing unnecessary complexity.
+
+---
+
+# 26. Skills
+
+The following skills are installed and must be loaded when relevant:
+
+| Skill | Trigger |
+|-------|---------|
+| `postgres-best-practices` | Writing SQL, schema design, indexes, migrations, pgvector, performance optimization, diagnosing slow queries |
+| `prisma-pgvector` | Prisma schema changes, migrations, raw queries (`$queryRaw`), seed scripts, pgvector embedding columns, IVFFlat indexes, cosine similarity search |
+| `mongodb-nestjs` | MongoDB collections, indexes, aggregation pipelines, NestJS integration, connection management, document schema design, idempotency handling |
+| `llm-tool-calling` | Gemini API, OpenAI SDK, tool calling loop, function calling, prompt construction, embedding generation, iteration limits, hallucination prevention |
+| `docker-setup` | Docker Compose, PostgreSQL (pgvector) containers, MongoDB containers, development environment setup |
+
+Skills are located at `.agents/skills/`.
+Skills provide specialized instructions and workflows for specific tasks.
+Use the skill tool to load a skill when a task matches its description.
+
+---
+
+# 27. Agent Delegation
+
+Agents are defined in `.opencode/opencode.json`. Use the `task` tool to delegate work to the correct agent:
+
+| Agent | Role |
+|-------|------|
+| `backend-dev` | NestJS, Clean Architecture, CQRS, repositories, dual-database patterns |
+| `frontend-dev` | Angular, components, services, RxJS, Angular Material |
+| `ai-pipeline` | LLM integration, tool calling, RAG, embeddings, prompt construction |
+| `testing` | Jest, coverage enforcement, mock repositories, mock LLM services |
+| `devops` | Docker, database setup (Prisma + MongoDB), migrations, seed data |
+
+### Commands
+
+| Command | Action |
+|---------|--------|
+| `/setup` | Run full project setup (Docker + Prisma + seed) |
+| `/test` | Run all tests and verify 75% coverage |
+| `/coverage` | Generate coverage reports |
+| `/commit` | Generate conventional commit message |
+| `/branch` | Create feature branch from main |
+| `/pr` | Create pull request |

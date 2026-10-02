@@ -75,14 +75,18 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 
 ```
 MessengerHub/
+├── .agents/
+│   └── skills/                  # AI agent skills (postgres-best-practices, prisma-pgvector, mongodb-nestjs, llm-tool-calling, docker-setup)
+├── .opencode/
+│   └── opencode.json            # OpenCode agents and commands config
 ├── apps/
-│   ├── api/                   # Node.js backend (Webhook + Worker)
+│   ├── api/                     # NestJS backend (API + Worker)
 │   │   └── src/
-│   │       ├── domain/        # Entities, repository interfaces, AI tool schemas
-│   │       ├── application/   # Use cases, LLM orchestration, RAG logic
-│   │       ├── infrastructure/# Postgres (pgvector) & Mongo adapters, LLM clients
-│   │       └── presentation/  # Express endpoints (webhook, dashboard API)
-│   └── web/                   # Angular frontend (Dashboard & Simulator)
+│   │       ├── domain/          # Entities, repository interfaces, AI tool schemas
+│   │       ├── application/     # Use cases, LLM orchestration, RAG logic
+│   │       ├── infrastructure/  # Postgres (pgvector) & Mongo adapters, LLM clients
+│   │       └── presentation/    # Express endpoints (webhook, dashboard API)
+│   └── web/                     # Angular frontend (Dashboard & Simulator)
 │       └── src/
 │           ├── app/
 │           │   ├── conversations/  # Conversation inbox and detail views
@@ -91,9 +95,13 @@ MessengerHub/
 │           │   └── core/           # Guards, models, API service
 │           ├── assets/
 │           └── environments/
-├── docs/                      # Seed data (PDFs/MDs for the clinic knowledge)
-├── plans/                     # Task plans (Backlog, InProgress, Completed)
-├── scripts/                   # Database seeding and setup scripts
+├── docs/                        # Seed data (knowledge base documents)
+├── plans/                       # Task plans
+│   ├── backlog/                 # Pending tasks
+│   ├── inProgress/              # Active tasks
+│   ├── completed/               # Finished tasks
+│   └── master_plan.md           # High-level implementation overview
+├── scripts/                     # Database seeding and setup scripts
 ├── AGENTS.md
 ├── DECISIONS.md
 ├── DESIGN.md
@@ -182,6 +190,7 @@ Unit tests use mock repositories, mock LLM services, and mock event publishers �
 | `POST` | `/webhooks/messages`     | Receives incoming messages (simulates WhatsApp) |
 | `GET`  | `/api/conversations`     | Lists conversations for the dashboard           |
 | `GET`  | `/api/conversations/:id` | Gets conversation details and AI traces         |
+| `POST` | `/api/simulator`         | Sends a test message as if from a patient       |
 
 ## License
 

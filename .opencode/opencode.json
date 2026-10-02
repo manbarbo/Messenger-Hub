@@ -1,0 +1,77 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "username": "manuelbarona",
+  "default_agent": "general",
+  "logLevel": "INFO",
+  "instructions": ["AGENTS.md"],
+
+  "skills": {
+    "paths": [".agents/skills"]
+  },
+
+  "agent": {
+    "backend-dev": {
+      "description": "NestJS developer specializing in Clean Architecture, CQRS, repositories, and dual-database (PostgreSQL + MongoDB) patterns",
+      "mode": "subagent",
+      "permission": { "edit": "allow", "bash": "ask" }
+    },
+    "frontend-dev": {
+      "description": "Angular developer specializing in components, services, RxJS, and Angular Material",
+      "mode": "subagent",
+      "permission": { "edit": "allow", "bash": "ask" }
+    },
+    "ai-pipeline": {
+      "description": "LLM integration specialist for tool calling, RAG (pgvector), prompt construction, and Gemini API",
+      "mode": "subagent",
+      "permission": { "edit": "allow", "bash": "ask" }
+    },
+    "testing": {
+      "description": "QA specialist enforcing 75% coverage mandate with mock repositories and mock LLM services",
+      "mode": "subagent",
+      "permission": { "edit": "ask", "bash": "ask" }
+    },
+    "devops": {
+      "description": "Docker, database setup (Prisma + MongoDB), migrations, and seed data specialist",
+      "mode": "subagent",
+      "permission": { "edit": "allow", "bash": "allow" }
+    }
+  },
+
+  "command": {
+    "setup": {
+      "description": "Run full project setup (Docker + Prisma + seed)",
+      "template": "Execute the project setup sequence: 1) Run docker-compose up -d to start PostgreSQL + MongoDB, 2) Run npx prisma migrate dev to apply schema, 3) Run npx prisma db seed to populate data. Report progress after each step.",
+      "prompt": "Execute the project setup sequence: 1) Run docker-compose up -d to start PostgreSQL + MongoDB, 2) Run npx prisma migrate dev to apply schema, 3) Run npx prisma db seed to populate data. Report progress after each step."
+    },
+    "test": {
+      "description": "Run all tests and verify 75% coverage",
+      "template": "Run all tests and verify coverage. First run `pnpm test`, then check if coverage is above 75% for both backend and frontend. If not, report which files need more tests.",
+      "prompt": "Run all tests: pnpm test. Verify coverage is above 75% for both backend and frontend. If not, report which files need more tests."
+    },
+    "coverage": {
+      "description": "Generate and review coverage reports",
+      "template": "Generate coverage reports for both backend and frontend. Display the coverage percentages and identify any files below 75% threshold.",
+      "prompt": "Generate coverage reports for both backend (pnpm --filter api test:cov) and frontend (pnpm --filter web test --code-coverage). Display the coverage percentages and identify any files below 75% threshold."
+    },
+    "commit": {
+      "description": "Generate conventional commit message and commit changes",
+      "template": "1) Run `git status` and `git diff --cached` to see staged changes. 2) Determine the correct type (feat/fix/docs/refactor/test/chore) and scope (api/web/shared). 3) Generate a conventional commit message in format: `type(scope): subject`. 4) Show the proposed message to the user and ask for confirmation. 5) If confirmed, run `git commit`.",
+      "prompt": "1) Run git status and git diff --cached to see staged changes. 2) Determine the correct type (feat/fix/docs/refactor/test/chore) and scope (api/web/shared). 3) Generate a conventional commit message in format: type(scope): subject. 4) Show the proposed message to the user and ask for confirmation. 5) If confirmed, run git commit."
+    },
+    "branch": {
+      "description": "Create a new feature branch from main",
+      "template": "1) Run `git status` to check current branch. 2) If on main, run `git pull origin main` to get latest changes. 3) Determine the branch name based on the task type (feat/fix/docs/refactor/test/chore) and a brief description. 4) Use the pattern: `type/description`. 5) Show the proposed branch name to the user and ask for confirmation. 6) If confirmed, run `git checkout -b <branch-name>`.",
+      "prompt": "1) Run git status to check current branch. 2) If on main, run git pull origin main. 3) Determine branch name: type/description (e.g., feat/webhook-endpoint). 4) Show proposed name, ask confirmation. 5) If confirmed, run git checkout -b <branch-name>."
+    },
+    "pr": {
+      "description": "Create a pull request from current branch to main",
+      "template": "1) Run `git status` to check current branch. 2) If on main, warn the user and exit. 3) Check if there are uncommitted changes. If so, prompt to commit first. 4) Run `git push origin <branch-name>`. 5) Generate a PR title using conventional commit format: `type(scope): description`. 6) Show the proposed PR title and description to the user. 7) Ask for confirmation. 8) If confirmed, create the PR using `gh pr create`. 9) Show the PR URL.",
+      "prompt": "1) Check current branch (warn if on main). 2) Check for uncommitted changes. 3) Push branch. 4) Generate PR title in conventional commit format. 5) Generate PR description. 6) Ask confirmation. 7) Create PR with gh pr create."
+    }
+  },
+
+  "permission": {
+    "edit": "allow",
+    "bash": { "git *": "allow", "pnpm *": "allow", "docker *": "allow", "npx *": "allow", "rm *": "ask", "*": "ask" }
+  }
+}
