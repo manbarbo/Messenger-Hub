@@ -156,7 +156,7 @@ MongoDB:
 - IVFFlat index requires a `lists` parameter tuned to dataset size. For growing datasets, HNSW index is preferred (available in pgvector 0.5+).
 - If the knowledge base grows significantly (> 100k documents), a dedicated vector DB may become necessary.
 
-**Embedding model:** Google `text-embedding-004` (768 dimensions). The dimension size is configurable and adapts to whichever embedding model is chosen.
+**Embedding model:** Google `gemini-embedding-001` (768 dimensions, requested with explicit `dimensions` — `text-embedding-004` is no longer available on the Gemini OpenAI-compatible endpoint). The dimension size is configurable via `EMBEDDING_DIMENSIONS` and adapts to whichever embedding model is chosen.
 
 ---
 
@@ -645,17 +645,22 @@ class MockLLMService implements LLMService {
 
 # 20. Seed Data Strategy
 
-**Status:** Accepted — target design for Phase 7 (current seed is partial)
+**Status:** Accepted — PostgreSQL seed implemented (T-7.1); MongoDB sample seed still pending (T-7.2)
 
 **Context:** The project requires a seed with 6–10 clinic documents, 2 locations, at least 3 specialties, and 2 weeks of availability schedules.
 
 **Decision:** Use Prisma seed scripts for PostgreSQL data and a separate MongoDB seed script for conversation examples.
 
-**Implementation status (current `apps/api/prisma/seed.ts`):**
+**Implementation status (`apps/api/prisma/seed.ts`, 2026-10-03 — T-7.1):**
 
-- Idempotent (skips if clinics already exist).
-- Seeds **1 clinic** (`Clínica Central Cali`), **1 doctor** (`Dra. Laura Gómez`, Medicina General), and **5 days of availability slots** (8 slots/day, 08:00–11:30 America/Bogota, weekdays only).
-- **Does not yet seed** knowledge documents, embeddings, multi-clinic data, or MongoDB samples — those are T-7.1 / T-7.2.
+- Idempotent: skips when both target clinics and ≥ 8 knowledge documents already exist. Set `SEED_RESET=true` to force a wipe + reseed.
+- Seeds **2 clinics:** Clínica Norte (Cali) and Clínica Sur (Bogotá), both `America/Bogota`.
+- Seeds **8 doctors** across 4 specialties (Medicina General, Dermatología, Cardiología, Pediatría).
+- Seeds **2 weeks of slots** (weekdays only, 8:00–17:30 Colombia at 30-minute intervals → 1600 rows for 8 doctors).
+- Seeds **12 knowledge documents** (6 categories × 2 clinics) with embeddings stored via raw SQL pgvector UPDATE.
+- Embedding model: `gemini-embedding-001` with explicit `dimensions: 768` (`text-embedding-004` is no longer available on Gemini). `GeminiEmbeddingService` also passes `dimensions` to the provider.
+- Seed data helpers live in `apps/api/prisma/seeds/` (clinic data, knowledge documents, slot generator, embedding client) with unit tests.
+- **Mongo sample conversations** remain T-7.2 (separate script).
 
 **Target seed contents (Phase 7):**
 
@@ -663,7 +668,7 @@ class MockLLMService implements LLMService {
 - **3+ specialties:** Medicina General, Dermatología, Cardiología, Pediatría
 - **6+ doctors:** Distributed across clinics and specialties
 - **2 weeks of slots:** 8 AM – 6 PM, 30-minute intervals, weekdays only
-- **8 knowledge documents:** Horarios, sedes, preparación de exámenes, políticas de cancelación, servicios, contacto — embedded with `text-embedding-004` (768 dims)
+- **8 knowledge documents:** Horarios, sedes, preparación de exámenes, políticas de cancelación, servicios, contacto — embedded with `gemini-embedding-001` (768 dims)
 - **Sample conversations:** 2–3 conversations with AI traces for dashboard testing
 
 ---

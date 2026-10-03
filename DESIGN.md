@@ -212,7 +212,7 @@ model KnowledgeDocument {
   title       String
   content     String
   category    String
-  embedding   Unsupported("vector(768)")? // nullable until T-7.1 seeds embeddings
+  embedding   Unsupported("vector(768)")? // set via raw SQL (seed T-7.1 / KnowledgeRepository.create)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -247,7 +247,7 @@ CREATE INDEX "idx_knowledge_docs_embedding" ON "knowledge_documents" USING ivffl
 
 #### Notes (implementation)
 
-- `embedding` uses pgvector with 768 dimensions (Google `text-embedding-004`). The column is **nullable** until Phase 7 seeds documents with embeddings (`T-7.1`).
+- `embedding` uses pgvector with 768 dimensions (Google `gemini-embedding-001`, requested with explicit `dimensions: 768`). The column remains nullable in Prisma (`Unsupported("vector(768)")`); embeddings are persisted via raw SQL after insert. Full seed data is provided by `T-7.1`.
 - The IVFFlat cosine index (`lists = 100`) is created in the **migration SQL**, not declared in `schema.prisma`. If you regenerate migrations from the schema, re-apply this index manually (or use a raw SQL migration) to avoid drift.
 - Semantic search uses cosine distance: `ORDER BY embedding <=> $1 LIMIT 5`, with results filtered by `1 - (embedding <=> $vec) > 0.7` (`RAG_SIMILARITY_THRESHOLD`).
 - The IVFFlat index is suitable for up to ~1M rows. For larger datasets, switch to HNSW.

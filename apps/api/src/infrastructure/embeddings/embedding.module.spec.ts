@@ -11,7 +11,7 @@ const mockConfigService = {
     const values: Record<string, string> = {
       LLM_API_KEY: 'test-key',
       LLM_BASE_URL: 'https://example.com/v1',
-      EMBEDDING_MODEL: 'text-embedding-004',
+      EMBEDDING_MODEL: 'gemini-embedding-001',
       EMBEDDING_DIMENSIONS: '768',
     };
     return (values[key] as T | undefined) ?? defaultValue;

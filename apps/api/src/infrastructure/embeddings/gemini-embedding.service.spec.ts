@@ -26,7 +26,7 @@ function createConfigService(overrides: Record<string, string> = {}): ConfigServ
   const values: Record<string, string> = {
     LLM_API_KEY: 'test-key',
     LLM_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    EMBEDDING_MODEL: 'text-embedding-004',
+    EMBEDDING_MODEL: 'gemini-embedding-001',
     EMBEDDING_DIMENSIONS: '768',
     ...overrides,
   };
@@ -64,8 +64,9 @@ describe('GeminiEmbeddingService', () => {
     const result = await service.embed('¿A qué hora atienden?');
 
     expect(createMock).toHaveBeenCalledWith({
-      model: 'text-embedding-004',
+      model: 'gemini-embedding-001',
       input: '¿A qué hora atienden?',
+      dimensions: 768,
     });
     expect(result).toEqual(vector);
     expect(result).toHaveLength(768);
@@ -78,8 +79,9 @@ describe('GeminiEmbeddingService', () => {
     await service.embed('  horario de atencion  ');
 
     expect(createMock).toHaveBeenCalledWith({
-      model: 'text-embedding-004',
+      model: 'gemini-embedding-001',
       input: 'horario de atencion',
+      dimensions: 768,
     });
   });
 
@@ -89,15 +91,16 @@ describe('GeminiEmbeddingService', () => {
 
     const service = new GeminiEmbeddingService(
       createConfigService({
-        EMBEDDING_MODEL: 'text-embedding-005',
+        EMBEDDING_MODEL: 'gemini-embedding-2',
         EMBEDDING_DIMENSIONS: '1536',
       }),
     );
     const result = await service.embed('consulta');
 
     expect(createMock).toHaveBeenCalledWith({
-      model: 'text-embedding-005',
+      model: 'gemini-embedding-2',
       input: 'consulta',
+      dimensions: 1536,
     });
     expect(result).toHaveLength(1536);
   });

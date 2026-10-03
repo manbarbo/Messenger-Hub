@@ -50,7 +50,7 @@ model KnowledgeDocument {
 
 **Key points:**
 - Use `Unsupported("vector(768)")` for the embedding column (Prisma doesn't natively support pgvector)
-- Dimension size must match your embedding model (768 for Google `text-embedding-004`, 1536 for OpenAI `text-embedding-3-small`)
+- Dimension size must match your embedding model (768 for Google `gemini-embedding-001` with `dimensions: 768`, 1536 for OpenAI `text-embedding-3-small`)
 - The `@@index("embedding", ops: CosineDistance)` creates an index for cosine similarity
 
 ### Unique Constraints
@@ -243,7 +243,7 @@ const openai = new OpenAI({
 
 async function embed(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({
-    model: process.env.EMBEDDING_MODEL || 'text-embedding-004',
+    model: process.env.EMBEDDING_MODEL || 'gemini-embedding-001',
     input: text,
   });
   return response.data[0].embedding;

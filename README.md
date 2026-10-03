@@ -36,7 +36,7 @@ Strictly controlled LLM execution using schema validation (Zod) for the followin
 Implemented pipeline components:
 
 - `LLMService` interface + `GeminiLLMService` adapter (OpenAI SDK → Gemini endpoint) + `MockLLMService` for tests.
-- `EmbeddingService` + `GeminiEmbeddingService` (`text-embedding-004`, 768 dimensions).
+- `EmbeddingService` + `GeminiEmbeddingService` (`gemini-embedding-001`, 768 dimensions).
 - `AIOrchestratorService`: prompt construction, tool-calling loop (max 5 iterations), validation feedback to the LLM, forced escalation, and AI trace persistence.
 - Colombia timezone interpretation (`America/Bogota`, fixed UTC-5) in prompts and domain validation.
 - Unit tests across domain, CQRS handlers, repositories, LLM/RAG/orchestration (Vitest).
@@ -57,8 +57,8 @@ Implemented pipeline components:
 
 #### Seed Data
 
-- Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, knowledge documents + embeddings).
-- MongoDB seed with sample conversations and traces.
+- Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, knowledge documents + embeddings) — **implemented (T-7.1)**.
+- MongoDB seed with sample conversations and traces — pending (T-7.2).
 
 > **Current async path:** `POST /webhooks/messages` validates and enqueues via `ProcessIncomingMessageCommand`; `QUEUE_SERVICE` is `BullMQQueueService` (`message-processing` + DLQ). Run the API (`pnpm --filter api start:dev`) and worker (`pnpm --filter api start:worker:dev`) as separate processes. Set `DEFAULT_CLINIC_ID` in `apps/api/.env` (or send `clinic_id` in the webhook body).
 
@@ -99,7 +99,7 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 4 | Async processing (queue, worker, webhook) | Completed |
 | 5 | API layer (controllers, routes, error handling) | Completed |
 | 6 | Frontend (Angular dashboard + simulator) | Backlog |
-| 7 | Seed data (full PG knowledge base + Mongo samples) | Backlog |
+| 7 | Seed data (PG knowledge base complete; Mongo samples pending) | In Progress |
 | 8 | Testing & coverage gate (≥ 75%) | Backlog |
 
 See [plans/master_plan.md](./plans/master_plan.md) for the full task breakdown.
@@ -114,7 +114,7 @@ MessengerHub/
 │   └── opencode.json            # OpenCode agents and commands config
 ├── apps/
 │   ├── api/                     # NestJS backend (API + Worker)
-│   │   ├── prisma/              # Schema, migrations, partial seed (clinic/doctor/slots)
+│   │   ├── prisma/              # Schema, migrations, full PG seed (clinics/doctors/slots/knowledge)
 │   │   ├── scripts/             # Operational scripts (e.g., ensure-mongo-indexes.ts)
 │   │   └── src/
 │   │       ├── domain/          # Entities, VOs, enums, repository/service interfaces, errors, events
@@ -175,12 +175,14 @@ _Make sure to add your `LLM_API_KEY` to `apps/api/.env`. The template includes `
 docker compose up -d
 ```
 
-4. Run PostgreSQL migrations and the partial seed (clinic, doctor, availability slots — knowledge documents/embeddings come with Phase 7):
+4. Run PostgreSQL migrations and the full seed (2 clinics, 8 doctors, 2 weeks of slots, 12 knowledge documents with embeddings). Set `DEFAULT_CLINIC_ID` in `apps/api/.env` to a seeded clinic UUID printed by the seed script:
 
 ```bash
 pnpm --filter api db:migrate
 pnpm --filter api db:seed
 ```
+
+Mongo sample conversations (T-7.2) come with the remaining Phase 7 work.
 
 Optionally ensure MongoDB indexes are present:
 
@@ -251,7 +253,7 @@ Private — for evaluation purposes only.
 | Idempotency at DB level | `message_id` unique index + `slot_id` unique constraint prevent duplicates under concurrency |
 | UTC storage, Colombia timezone interpretation | "Mañana" at 10:40 PM in Cali means tomorrow, not the day after |
 | Zod validation for LLM outputs | LLM arguments are untrusted input; must be validated before execution |
-| pgvector over dedicated vector DB | Single database for knowledge + clinic data; Google `text-embedding-004` (768 dimensions) for embeddings |
+| pgvector over dedicated vector DB | Single database for knowledge + clinic data; Google `gemini-embedding-001` (768 dimensions) for embeddings |
 | Max 5 tool-call iterations | Prevents infinite loops; forces escalation if unresolved |
 
 Full decision record in [DECISIONS.md](./DECISIONS.md).

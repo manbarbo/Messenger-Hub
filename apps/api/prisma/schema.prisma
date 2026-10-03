@@ -97,7 +97,7 @@ model KnowledgeDocument {
   title     String
   content   String
   category  String
-  embedding Unsupported("vector(768)")? // nullable until T-7.1 seeds embeddings
+  embedding Unsupported("vector(768)")? // set via raw SQL (seed T-7.1 / KnowledgeRepository.create)
   createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz
 

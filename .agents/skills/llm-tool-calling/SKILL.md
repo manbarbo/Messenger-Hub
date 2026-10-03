@@ -226,7 +226,7 @@ Herramientas: buscar_conocimiento, consultar_disponibilidad, agendar_cita, escal
 
 ## RAG Pipeline
 
-1. Embed query via `GeminiEmbeddingService` (Google `text-embedding-004`, 768 dimensions)
+1. Embed query via `GeminiEmbeddingService` (Google `gemini-embedding-001`, 768 dimensions via explicit `dimensions` param)
 2. Cosine similarity search via pgvector: `1 - (embedding <=> $1::vector) > 0.7`
 3. Return top 5 matching documents
 4. If no match > 0.7, return "No relevant information found"

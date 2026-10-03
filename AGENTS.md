@@ -496,7 +496,7 @@ Rules:
 Rules:
 
 - Semantic search uses pgvector cosine distance on `knowledge_documents.embedding`.
-- The same embedding model (Google `text-embedding-004`, 768 dimensions) must be used for indexing documents and querying.
+- The same embedding model (Google `gemini-embedding-001`, 768 dimensions via explicit `dimensions` param) must be used for indexing documents and querying.
 - If no document has similarity > 0.7, the tool returns "No relevant information found".
 - The LLM must not fabricate information not present in the knowledge base.
 - Document chunking strategy: split by section/paragraph, max 500 tokens per chunk.

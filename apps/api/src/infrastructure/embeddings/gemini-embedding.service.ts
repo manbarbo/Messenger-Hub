@@ -5,7 +5,7 @@ import type { EmbeddingService } from '@domain/services/embedding.service';
 import { LLMProviderError } from '@domain/errors/llm-provider.error';
 import { ValidationError } from '@domain/errors/validation.error';
 
-const DEFAULT_EMBEDDING_MODEL = 'text-embedding-004';
+const DEFAULT_EMBEDDING_MODEL = 'gemini-embedding-001';
 const DEFAULT_EMBEDDING_DIMENSIONS = 768;
 
 @Injectable()
@@ -40,6 +40,7 @@ export class GeminiEmbeddingService implements EmbeddingService {
       const response = await this.client.embeddings.create({
         model: this.model,
         input,
+        dimensions: this.dimensions,
       });
 
       const embedding = response.data?.[0]?.embedding;
