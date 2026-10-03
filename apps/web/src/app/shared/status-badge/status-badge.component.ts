@@ -1,16 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import type { ConversationStatus } from '../../core/models/conversation.model';
+import {
+  CONVERSATION_STATUS_LABELS,
+  type ConversationStatus,
+} from '../../core/models/conversation.model';
 
 interface StatusMeta {
-  readonly label: string;
   readonly className: string;
 }
 
 const STATUS_META: Readonly<Record<ConversationStatus, StatusMeta>> = {
-  active: { label: 'Active', className: 'status-badge--active' },
-  resolved_by_ai: { label: 'Resolved by AI', className: 'status-badge--resolved-by-ai' },
-  appointment_booked: { label: 'Appointment booked', className: 'status-badge--appointment-booked' },
-  escalated: { label: 'Escalated', className: 'status-badge--escalated' },
+  active: { className: 'status-badge--active' },
+  resolved_by_ai: { className: 'status-badge--resolved-by-ai' },
+  appointment_booked: { className: 'status-badge--appointment-booked' },
+  escalated: { className: 'status-badge--escalated' },
 };
 
 @Component({
@@ -22,7 +24,7 @@ const STATUS_META: Readonly<Record<ConversationStatus, StatusMeta>> = {
 export class StatusBadgeComponent {
   readonly status = input.required<ConversationStatus>();
 
-  readonly label = computed(() => STATUS_META[this.status()]?.label ?? this.status());
+  readonly label = computed(() => CONVERSATION_STATUS_LABELS[this.status()] ?? this.status());
   readonly className = computed(
     () => STATUS_META[this.status()]?.className ?? 'status-badge--unknown',
   );

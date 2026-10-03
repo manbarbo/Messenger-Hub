@@ -1,0 +1,98 @@
+<section class="conversation-inbox" aria-labelledby="conversation-inbox-title">
+  <header class="conversation-inbox__header">
+    <h1 id="conversation-inbox-title">Conversations</h1>
+
+    <mat-form-field
+      appearance="outline"
+      subscriptSizing="dynamic"
+      class="conversation-inbox__filter"
+    >
+      <mat-label>Status</mat-label>
+      <mat-select
+        data-testid="status-filter"
+        [value]="statusFilter()"
+        (selectionChange)="onStatusFilterChange($event.value)"
+      >
+        <mat-option value="">All statuses</mat-option>
+        @for (option of statusOptions; track option.value) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </header>
+
+  @if (loading()) {
+    <div
+      class="conversation-skeleton"
+      data-testid="conversation-skeleton"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span class="conversation-skeleton__label">Loading conversations…</span>
+      @for (row of skeletonRows; track row) {
+        <div class="conversation-skeleton__row">
+          <span class="conversation-skeleton__cell conversation-skeleton__cell--phone"></span>
+          <span class="conversation-skeleton__cell conversation-skeleton__cell--clinic"></span>
+          <span class="conversation-skeleton__cell conversation-skeleton__cell--status"></span>
+          <span class="conversation-skeleton__cell conversation-skeleton__cell--messages"></span>
+          <span class="conversation-skeleton__cell conversation-skeleton__cell--activity"></span>
+        </div>
+      }
+    </div>
+  } @else if (error(); as errorMessage) {
+    <app-error-message
+      data-testid="conversation-error"
+      title="Could not load conversations"
+      [message]="errorMessage"
+      [canRetry]="true"
+      (retry)="loadConversations()"
+    />
+  } @else if (conversations().length === 0) {
+    <div class="conversation-inbox__empty" data-testid="conversation-empty">
+      No conversations found
+    </div>
+  } @else {
+    <div class="conversation-table-wrap">
+      <table class="conversation-table" data-testid="conversation-table">
+        <thead>
+          <tr>
+            <th scope="col">Patient Phone</th>
+            <th scope="col">Clinic</th>
+            <th scope="col">Status</th>
+            <th scope="col">Messages</th>
+            <th scope="col">Last Activity</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (conversation of conversations(); track conversation.id) {
+            <tr
+              class="conversation-table__row"
+              data-testid="conversation-row"
+              tabindex="0"
+              (click)="openConversation(conversation)"
+              (keydown.enter)="openConversation(conversation)"
+            >
+              <td>{{ conversation.patientPhone }}</td>
+              <td>{{ conversation.clinicName ?? '—' }}</td>
+              <td>
+                <app-status-badge [status]="conversation.status" />
+              </td>
+              <td>{{ conversation.messageCount ?? '—' }}</td>
+              <td>{{ conversation.lastMessageAt | date: 'medium' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <app-pagination
+      data-testid="conversation-pagination"
+      [page]="pagination().page"
+      [totalPages]="pagination().totalPages"
+      [total]="pagination().total"
+      [limit]="pagination().limit"
+      (pageChange)="onPageChange($event)"
+    />
+  }
+</section>

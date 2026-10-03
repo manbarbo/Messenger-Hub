@@ -14,6 +14,13 @@ export const CONVERSATION_STATUSES: readonly ConversationStatus[] = [
   'escalated',
 ];
 
+export const CONVERSATION_STATUS_LABELS: Readonly<Record<ConversationStatus, string>> = {
+  active: 'Active',
+  resolved_by_ai: 'Resolved by AI',
+  appointment_booked: 'Appointment booked',
+  escalated: 'Escalated',
+};
+
 export interface ConversationSummary {
   readonly id: string;
   readonly clinicId: string;
