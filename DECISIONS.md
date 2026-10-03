@@ -238,7 +238,7 @@ The OpenAI SDK reads `LLM_BASE_URL` to route requests to Gemini. The model name,
 
 # 7. Asynchronous Processing: Queue + Worker Pattern
 
-**Status:** Accepted — BullMQ adapter (T-4.1) + worker consumer (T-4.2) implemented; webhook endpoint still pending (T-4.3)
+**Status:** Accepted — Phase 4 implemented (BullMQ queue T-4.1, worker T-4.2, webhook T-4.3)
 
 **Context:** The webhook endpoint must respond fast (< 200ms). LLM processing takes 5–30 seconds (depending on tool calls and iterations). Blocking the HTTP response for LLM latency is unacceptable.
 
@@ -247,23 +247,24 @@ The OpenAI SDK reads `LLM_BASE_URL` to route requests to Gemini. The model name,
 **Implementation status:**
 
 - `QUEUE_SERVICE` is bound to `BullMQQueueService` via global `QueueModule` (main queue `message-processing` + DLQ `message-processing-dlq`).
-- `ProcessIncomingMessageHandler` calls `queueService.push(job)` after inserting the message.
+- `POST /webhooks/messages` (`WebhookController`) validates with Zod, executes `ProcessIncomingMessageCommand` (dedupe → insert message → create/reuse conversation → queue push), returns `202` or `200 duplicate`.
 - Main queue retry: 3 attempts, exponential backoff 1s; retain 100 complete / 500 failed.
 - Worker: separate NestJS context (`worker-main.ts` + `WorkerModule`) runs `BullMQMessageWorker` (raw BullMQ `Worker` in infrastructure) → `MessageProcessorService` → `AIOrchestratorService.processTurn`.
 - DLQ: after the final failed attempt, the worker moves the job payload to `message-processing-dlq` via `BullMQQueueService.pushToDlq`.
-- Idempotency: outbound assistant messages use deterministic `messageId` (`assistant:${inboundMessageId}`); processor skips if already present.
+- Idempotency: webhook dedupes on inbound `messageId`; worker uses deterministic outbound `messageId` (`assistant:${inboundMessageId}`).
+- Clinic scoping on webhook: body `clinic_id` or `DEFAULT_CLINIC_ID` env (JWT clinic claim is future auth work).
 - Redis connection from `REDIS_HOST` / `REDIS_PORT` (defaults `localhost:6379`).
 - `InMemoryQueueService` remains as a test/dev implementation; production binding is BullMQ.
 - AI traces (tokens/latency/tools) are saved by the orchestrator during `processTurn`.
 
-**Flow (target):**
+**Flow (implemented):**
 
 ```text
 Webhook Request
   → Validate + Deduplicate (check message_id)
   → Insert message into MongoDB
   → Push job to queue
-  → Return 202 Accepted
+  → Return 202 Accepted (or 200 duplicate)
 
 Worker (separate process):
   → Consume job from queue

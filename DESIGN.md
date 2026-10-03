@@ -349,7 +349,7 @@ db.ai_traces.createIndex({ finalStatus: 1 });
 
 **Rule:** When an operation touches both databases, PostgreSQL commits first (it holds the source of truth for appointments). MongoDB updates are retried on failure. The system accepts eventual consistency for conversation state.
 
-**Implementation note (current):** `AIOrchestratorService.processTurn` returns the resulting `ConversationStatus` and persists an `AITrace`, but does **not** yet call `ConversationRepository.updateStatus`. Persisting conversation status after each AI turn is planned with the worker/webhook flow (Phases 4–5). The `ConversationEscalatedEvent` domain event is defined but not yet published at runtime.
+**Implementation note (current):** `AIOrchestratorService.processTurn` returns the resulting `ConversationStatus` and persists an `AITrace`. Conversation status is persisted by `MessageProcessorService` (worker, T-4.2) via `ConversationRepository.updateStatus` after each turn. The `ConversationEscalatedEvent` domain event is defined but not yet published at runtime.
 
 ---
 
@@ -566,7 +566,7 @@ Patient Message
 - **Purpose:** Mark conversation for human attention.
 - **Validation:** `motivo` must be a non-empty string.
 - **Effect (target):** Updates conversation status to `escalated` in MongoDB.
-- **Effect (current):** The orchestrator returns `ConversationStatus.ESCALATED` with a fixed acknowledgment message and records the trace. Persisting status in MongoDB happens when the worker/webhook path is wired (Phase 4/5).
+- **Effect (current):** The orchestrator returns `ConversationStatus.ESCALATED` with a fixed acknowledgment message and records the trace. Persisting status in MongoDB happens in the worker (`MessageProcessorService`) after `processTurn`.
 
 ## Prompt Construction
 
@@ -596,7 +596,7 @@ Current Message:
 
 # 5. API Contracts
 
-> **Status:** Target contracts for Phase 5. Controllers are not implemented yet (`apps/api/src/presentation/` is a placeholder). Until then the NestJS app only exposes bootstrap health routes.
+> **Implementation status (2026-10-02):** `POST /webhooks/messages` is implemented (`presentation/controllers/webhook.controller.ts`). Dashboard endpoints (`GET /api/conversations`, simulator) remain target contracts for Phase 5.
 
 ## Base URL
 
@@ -633,7 +633,9 @@ Receives incoming messages (simulates WhatsApp). Responds fast; LLM processing h
 **Behavior:**
 
 - Returns `202 Accepted` immediately.
-- Pushes message to processing queue (SQS or BullMQ).
+- Pushes message to processing queue (BullMQ in development; SQS in production).
+- Clinic scoping: optional `clinic_id` in the body, or `DEFAULT_CLINIC_ID` env.
+- Invalid bodies return `400` with `{ "error": "ValidationError", "message": "..." }`.
 - If `message_id` already exists, returns `200 OK` with `{ "status": "duplicate", "conversationId": "uuid" }` — no reprocessing.
 - Worker picks up the message, loads conversation history, calls LLM, and sends response.
 

@@ -25,9 +25,9 @@ Phases 1–3 are **Completed**. What exists in the codebase today:
 
 **Current gaps (planned Phases 4–8):**
 
-- Queue + worker are implemented (BullMQ `message-processing` + DLQ); webhook endpoint still pending (T-4.3).
-- `presentation/` is a placeholder — no webhook/dashboard/simulator controllers.
-- Orchestrator returns `ConversationStatus` but does not yet persist it via `ConversationRepository.updateStatus` (worker now does this after `processTurn`).
+- Phase 4 (async processing) is complete: BullMQ queue, worker consumer, and `POST /webhooks/messages`.
+- `presentation/` has the webhook controller; dashboard/simulator controllers are still pending (T-5.1).
+- Orchestrator returns `ConversationStatus`; worker persists it via `ConversationRepository.updateStatus` after `processTurn`.
 - Seed does not yet include knowledge documents/embeddings (T-7.1) or Mongo samples (T-7.2).
 - Coverage gate (≥ 75%) is Phase 8 (T-8.3).
 - IVFFlat index lives in migration SQL, not `schema.prisma` (documented in DECISIONS.md §24).
@@ -98,7 +98,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-3.4 | AI Pipeline | AI Orchestration | Backend | Completed | 2–3 |
 | T-4.1 | Async Processing | Queue Service | Backend | Completed | 1–2 |
 | T-4.2 | Async Processing | Worker | Backend | Completed | 2–3 |
-| T-4.3 | Async Processing | Webhook Endpoint | Backend | Backlog | 1–2 |
+| T-4.3 | Async Processing | Webhook Endpoint | Backend | Completed | 1–2 |
 | T-5.1 | API Layer | Controllers & Routes | Backend | Backlog | 2–3 |
 | T-5.2 | API Layer | Error Handling & Validation | Backend | Backlog | 1–2 |
 | T-6.1 | Frontend | Angular Foundation | Frontend | Backlog | 2–3 |
@@ -181,7 +181,7 @@ T-8.3 (Coverage Verification) — final gate
 | T-3.4 | `apps/api/src/application/llm/ai-orchestrator.service.ts`, `apps/api/src/application/llm/prompt-builder.ts` |
 | T-4.1 | `apps/api/src/infrastructure/queue/bullmq-queue.service.ts`, `apps/api/src/infrastructure/queue/queue.module.ts` |
 | T-4.2 | `apps/api/src/application/worker/message-processor.service.ts`, `apps/api/src/infrastructure/queue/bullmq-message.worker.ts`, `apps/api/src/application/worker/worker.module.ts`, `apps/api/src/worker-main.ts` |
-| T-4.3 | `apps/api/src/presentation/controllers/webhook.controller.ts` |
+| T-4.3 | `apps/api/src/presentation/controllers/webhook.controller.ts`, `apps/api/src/presentation/presentation.module.ts` |
 | T-5.1 | `apps/api/src/presentation/controllers/conversations.controller.ts`, `apps/api/src/presentation/controllers/simulator.controller.ts` |
 | T-5.2 | `apps/api/src/presentation/filters/`, `apps/api/src/presentation/pipes/` |
 | T-6.1 | `apps/web/src/app/`, routing, shared components, API service |
