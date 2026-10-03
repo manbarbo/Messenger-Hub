@@ -6,6 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   AI_TRACE_REPOSITORY,
   APPOINTMENT_REPOSITORY,
+  CLINIC_REPOSITORY,
   CONVERSATION_REPOSITORY,
   EMBEDDING_SERVICE,
   EVENT_PUBLISHER,
@@ -20,6 +21,7 @@ import { InfrastructureModule } from './infrastructure.module';
 import { EventEmitterEventPublisher } from './events/event-emitter-event-publisher';
 import { InMemoryQueueService } from './queue/in-memory-queue.service';
 import { PrismaAppointmentRepository } from './repositories/prisma-appointment.repository';
+import { PrismaClinicRepository } from './repositories/prisma-clinic.repository';
 import { PrismaKnowledgeRepository } from './repositories/prisma-knowledge.repository';
 import { PrismaSlotRepository } from './repositories/prisma-slot.repository';
 import { MongoAITraceRepository } from './repositories/mongo-ai-trace.repository';
@@ -53,6 +55,7 @@ describe('InfrastructureModule', () => {
   it('binds PostgreSQL repositories to Prisma adapters', async () => {
     const moduleRef = await createTestModule();
     expect(moduleRef.get(APPOINTMENT_REPOSITORY)).toBeInstanceOf(PrismaAppointmentRepository);
+    expect(moduleRef.get(CLINIC_REPOSITORY)).toBeInstanceOf(PrismaClinicRepository);
     expect(moduleRef.get(SLOT_REPOSITORY)).toBeInstanceOf(PrismaSlotRepository);
     expect(moduleRef.get(KNOWLEDGE_REPOSITORY)).toBeInstanceOf(PrismaKnowledgeRepository);
   });
@@ -74,6 +77,7 @@ describe('InfrastructureModule', () => {
     const moduleRef = await createTestModule();
     const tokens = [
       APPOINTMENT_REPOSITORY,
+      CLINIC_REPOSITORY,
       SLOT_REPOSITORY,
       KNOWLEDGE_REPOSITORY,
       CONVERSATION_REPOSITORY,

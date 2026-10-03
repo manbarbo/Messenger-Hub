@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AppointmentNotFoundError,
   ClinicNotFoundError,
+  ConversationNotFoundError,
   LLMIterationLimitError,
   LLMProviderError,
   PastDateError,
@@ -34,6 +35,12 @@ describe('domain errors', () => {
     const err = new AppointmentNotFoundError('apt-1');
     expect(err.name).toBe('AppointmentNotFoundError');
     expect(err.appointmentId).toBe('apt-1');
+  });
+
+  it('ConversationNotFoundError includes conversation id', () => {
+    const err = new ConversationNotFoundError('conv-1');
+    expect(err.name).toBe('ConversationNotFoundError');
+    expect(err.conversationId).toBe('conv-1');
   });
 
   it('ClinicNotFoundError includes clinic id', () => {

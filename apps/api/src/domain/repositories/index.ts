@@ -2,6 +2,7 @@ export {
   APPOINTMENT_REPOSITORY,
   type AppointmentRepository,
 } from './appointment.repository';
+export { CLINIC_REPOSITORY, type ClinicRepository } from './clinic.repository';
 export { SLOT_REPOSITORY, type SlotRepository } from './slot.repository';
 export { KNOWLEDGE_REPOSITORY, type KnowledgeRepository } from './knowledge.repository';
 export {

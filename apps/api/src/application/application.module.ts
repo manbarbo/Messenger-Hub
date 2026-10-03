@@ -5,6 +5,8 @@ import { CreateAppointmentHandler } from './commands/create-appointment/create-a
 import { ProcessIncomingMessageHandler } from './commands/process-incoming-message/process-incoming-message.handler';
 import { AppointmentCancelledEventHandler } from './event-handlers/appointment-cancelled.handler';
 import { AppointmentCreatedEventHandler } from './event-handlers/appointment-created.handler';
+import { GetConversationDetailHandler } from './queries/get-conversation-detail/get-conversation-detail.handler';
+import { ListConversationsHandler } from './queries/list-conversations/list-conversations.handler';
 
 export const COMMAND_HANDLERS = [
   CreateAppointmentHandler,
@@ -12,10 +14,12 @@ export const COMMAND_HANDLERS = [
   ProcessIncomingMessageHandler,
 ];
 
+export const QUERY_HANDLERS = [ListConversationsHandler, GetConversationDetailHandler];
+
 export const EVENT_HANDLERS = [AppointmentCreatedEventHandler, AppointmentCancelledEventHandler];
 
 @Module({
   imports: [CqrsModule],
-  providers: [...COMMAND_HANDLERS, ...EVENT_HANDLERS],
+  providers: [...COMMAND_HANDLERS, ...QUERY_HANDLERS, ...EVENT_HANDLERS],
 })
 export class ApplicationModule {}

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AI_TRACE_REPOSITORY,
   APPOINTMENT_REPOSITORY,
+  CLINIC_REPOSITORY,
   CONVERSATION_REPOSITORY,
   EVENT_PUBLISHER,
   KNOWLEDGE_REPOSITORY,
@@ -17,12 +18,15 @@ import {
   ApplicationModule,
   COMMAND_HANDLERS,
   EVENT_HANDLERS,
+  QUERY_HANDLERS,
 } from './application.module';
 import { CancelAppointmentHandler } from './commands/cancel-appointment/cancel-appointment.handler';
 import { CreateAppointmentHandler } from './commands/create-appointment/create-appointment.handler';
 import { ProcessIncomingMessageHandler } from './commands/process-incoming-message/process-incoming-message.handler';
 import { AppointmentCancelledEventHandler } from './event-handlers/appointment-cancelled.handler';
 import { AppointmentCreatedEventHandler } from './event-handlers/appointment-created.handler';
+import { GetConversationDetailHandler } from './queries/get-conversation-detail/get-conversation-detail.handler';
+import { ListConversationsHandler } from './queries/list-conversations/list-conversations.handler';
 
 const noop = async () => undefined;
 
@@ -36,33 +40,42 @@ const noop = async () => undefined;
     },
     {
       provide: CONVERSATION_REPOSITORY,
-      useValue: { findByPatientPhone: noop, create: noop },
+      useValue: { findByPatientPhone: noop, create: noop, findById: noop, findAll: noop },
     },
-    { provide: MESSAGE_REPOSITORY, useValue: { findByMessageId: noop, create: noop } },
+    {
+      provide: MESSAGE_REPOSITORY,
+      useValue: { findByMessageId: noop, create: noop, findByConversationId: noop },
+    },
+    { provide: AI_TRACE_REPOSITORY, useValue: { findByConversationId: noop, create: noop } },
+    { provide: CLINIC_REPOSITORY, useValue: { findById: noop } },
     { provide: EVENT_PUBLISHER, useValue: { publish: noop } },
     { provide: QUEUE_SERVICE, useValue: { push: noop } },
     { provide: KNOWLEDGE_REPOSITORY, useValue: {} },
-    { provide: AI_TRACE_REPOSITORY, useValue: {} },
   ],
   exports: [
     SLOT_REPOSITORY,
     APPOINTMENT_REPOSITORY,
     CONVERSATION_REPOSITORY,
     MESSAGE_REPOSITORY,
+    AI_TRACE_REPOSITORY,
+    CLINIC_REPOSITORY,
     EVENT_PUBLISHER,
     QUEUE_SERVICE,
     KNOWLEDGE_REPOSITORY,
-    AI_TRACE_REPOSITORY,
   ],
 })
 class MockApplicationDepsModule {}
 
 describe('ApplicationModule', () => {
-  it('registers CQRS command and event handlers', () => {
+  it('registers CQRS command, query, and event handlers', () => {
     expect(COMMAND_HANDLERS).toEqual([
       CreateAppointmentHandler,
       CancelAppointmentHandler,
       ProcessIncomingMessageHandler,
+    ]);
+    expect(QUERY_HANDLERS).toEqual([
+      ListConversationsHandler,
+      GetConversationDetailHandler,
     ]);
     expect(EVENT_HANDLERS).toEqual([
       AppointmentCreatedEventHandler,
@@ -70,7 +83,7 @@ describe('ApplicationModule', () => {
     ]);
   });
 
-  it('imports CqrsModule for CommandBus support', () => {
+  it('imports CqrsModule for CommandBus and QueryBus support', () => {
     const imports = Reflect.getMetadata('imports', ApplicationModule) as unknown[] | undefined;
     expect(imports ?? []).toContain(CqrsModule);
   });
@@ -84,6 +97,10 @@ describe('ApplicationModule', () => {
     expect(moduleRef.get(CancelAppointmentHandler)).toBeInstanceOf(CancelAppointmentHandler);
     expect(moduleRef.get(ProcessIncomingMessageHandler)).toBeInstanceOf(
       ProcessIncomingMessageHandler,
+    );
+    expect(moduleRef.get(ListConversationsHandler)).toBeInstanceOf(ListConversationsHandler);
+    expect(moduleRef.get(GetConversationDetailHandler)).toBeInstanceOf(
+      GetConversationDetailHandler,
     );
   });
 });

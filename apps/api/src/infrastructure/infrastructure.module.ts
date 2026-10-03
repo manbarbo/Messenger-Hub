@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import {
   AI_TRACE_REPOSITORY,
   APPOINTMENT_REPOSITORY,
+  CLINIC_REPOSITORY,
   CONVERSATION_REPOSITORY,
   KNOWLEDGE_REPOSITORY,
   MESSAGE_REPOSITORY,
@@ -11,6 +12,7 @@ import { EVENT_PUBLISHER, QUEUE_SERVICE } from '@domain/services';
 import { EventEmitterEventPublisher } from './events/event-emitter-event-publisher';
 import { InMemoryQueueService } from './queue/in-memory-queue.service';
 import { PrismaAppointmentRepository } from './repositories/prisma-appointment.repository';
+import { PrismaClinicRepository } from './repositories/prisma-clinic.repository';
 import { PrismaKnowledgeRepository } from './repositories/prisma-knowledge.repository';
 import { PrismaSlotRepository } from './repositories/prisma-slot.repository';
 import { MongoAITraceRepository } from './repositories/mongo-ai-trace.repository';
@@ -20,6 +22,7 @@ import { MongoMessageRepository } from './repositories/mongo-message.repository'
 @Module({
   providers: [
     { provide: APPOINTMENT_REPOSITORY, useClass: PrismaAppointmentRepository },
+    { provide: CLINIC_REPOSITORY, useClass: PrismaClinicRepository },
     { provide: SLOT_REPOSITORY, useClass: PrismaSlotRepository },
     { provide: KNOWLEDGE_REPOSITORY, useClass: PrismaKnowledgeRepository },
     { provide: CONVERSATION_REPOSITORY, useClass: MongoConversationRepository },
@@ -30,6 +33,7 @@ import { MongoMessageRepository } from './repositories/mongo-message.repository'
   ],
   exports: [
     APPOINTMENT_REPOSITORY,
+    CLINIC_REPOSITORY,
     SLOT_REPOSITORY,
     KNOWLEDGE_REPOSITORY,
     CONVERSATION_REPOSITORY,
