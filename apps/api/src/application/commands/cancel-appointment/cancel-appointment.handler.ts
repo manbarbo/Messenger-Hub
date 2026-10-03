@@ -11,13 +11,14 @@ import {
   type AppointmentRepository,
   type SlotRepository,
 } from '@domain/repositories';
-import { EVENT_PUBLISHER, type EventPublisher } from '@domain/services';
+import { EVENT_PUBLISHER, LOGGER, type EventPublisher, type Logger } from '@domain/services';
 import { CancelAppointmentCommand } from './cancel-appointment.command';
 
 @CommandHandler(CancelAppointmentCommand)
 @Injectable()
 export class CancelAppointmentHandler implements ICommandHandler<CancelAppointmentCommand> {
   constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
     @Inject(APPOINTMENT_REPOSITORY) private readonly appointmentRepository: AppointmentRepository,
     @Inject(SLOT_REPOSITORY) private readonly slotRepository: SlotRepository,
     @Inject(EVENT_PUBLISHER) private readonly eventPublisher: EventPublisher,
@@ -27,10 +28,21 @@ export class CancelAppointmentHandler implements ICommandHandler<CancelAppointme
     const existing = await this.appointmentRepository.findById(command.appointmentId);
 
     if (!existing) {
+      this.logger.warn('Appointment not found', {
+        context: 'CancelAppointmentHandler',
+        appointmentId: command.appointmentId,
+        reason: 'not_found',
+      });
       throw new AppointmentNotFoundError(command.appointmentId);
     }
 
     if (existing.status !== AppointmentStatus.CONFIRMED) {
+      this.logger.warn('Invalid appointment status for cancellation', {
+        context: 'CancelAppointmentHandler',
+        appointmentId: command.appointmentId,
+        currentStatus: existing.status,
+        reason: 'invalid_status',
+      });
       throw new ValidationError('Only CONFIRMED appointments can be cancelled', [
         { field: 'status', message: `cannot cancel appointment in status ${existing.status}` },
       ]);
@@ -49,6 +61,13 @@ export class CancelAppointmentHandler implements ICommandHandler<CancelAppointme
         updated.slotId,
       ),
     );
+
+    this.logger.info('Appointment cancelled', {
+      context: 'CancelAppointmentHandler',
+      appointmentId: updated.id,
+      clinicId: updated.clinicId,
+      slotId: updated.slotId,
+    });
 
     return updated;
   }

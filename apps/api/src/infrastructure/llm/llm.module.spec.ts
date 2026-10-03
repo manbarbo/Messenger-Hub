@@ -2,9 +2,11 @@ import 'reflect-metadata';
 import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { LLM_SERVICE } from '@domain/services';
+import { LLM_SERVICE, LOGGER } from '@domain/services';
 import { GeminiLLMService } from './gemini-llm.service';
 import { LlmModule } from './llm.module';
+
+const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
 const mockConfigService = {
   get: <T>(key: string, defaultValue?: T): T | undefined => {
@@ -19,8 +21,11 @@ const mockConfigService = {
 
 @Global()
 @Module({
-  providers: [{ provide: ConfigService, useValue: mockConfigService }],
-  exports: [ConfigService],
+  providers: [
+    { provide: ConfigService, useValue: mockConfigService },
+    { provide: LOGGER, useValue: mockLogger },
+  ],
+  exports: [ConfigService, LOGGER],
 })
 class MockConfigModule {}
 

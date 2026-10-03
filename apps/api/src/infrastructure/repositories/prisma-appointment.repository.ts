@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Appointment } from '@domain/entities/appointment.entity';
 import { AppointmentStatus } from '@domain/enums/appointment-status.enum';
 import { SlotAlreadyBookedError } from '@domain/errors/slot-already-booked.error';
 import { SlotNotFoundError } from '@domain/errors/slot-not-found.error';
 import type { AppointmentRepository } from '@domain/repositories/appointment.repository';
+import { LOGGER, type Logger } from '@domain/services';
 import { PrismaService } from '../database/prisma.service';
 
 interface PrismaAppointment {
@@ -34,7 +35,10 @@ function toDomain(row: PrismaAppointment): Appointment {
 
 @Injectable()
 export class PrismaAppointmentRepository implements AppointmentRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async create(appointment: Appointment): Promise<Appointment> {
     return this.prisma.$transaction(async (tx) => {
@@ -45,6 +49,11 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
       }
 
       if (slot.isBooked) {
+        this.logger.warn('Slot conflict during appointment create', {
+          context: 'PrismaAppointmentRepository',
+          slotId: appointment.slotId,
+          reason: 'slot_already_booked',
+        });
         throw new SlotAlreadyBookedError(appointment.slotId);
       }
 
@@ -65,6 +74,12 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
       await tx.slot.update({
         where: { id: appointment.slotId },
         data: { isBooked: true },
+      });
+
+      this.logger.debug('Appointment created in transaction', {
+        context: 'PrismaAppointmentRepository',
+        appointmentId: created.id,
+        slotId: created.slotId,
       });
 
       return toDomain(created);
@@ -99,6 +114,13 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
         updatedAt: appointment.updatedAt,
       },
     });
+
+    this.logger.debug('Appointment status updated', {
+      context: 'PrismaAppointmentRepository',
+      appointmentId: updated.id,
+      newStatus: updated.status,
+    });
+
     return toDomain(updated);
   }
 }

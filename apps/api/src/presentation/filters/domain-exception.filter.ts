@@ -1,4 +1,4 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Inject } from '@nestjs/common';
 import {
   AppointmentNotFoundError,
   ClinicNotFoundError,
@@ -10,6 +10,7 @@ import {
   SlotNotFoundError,
   ValidationError,
 } from '@domain/errors';
+import { LOGGER, type Logger } from '@domain/services';
 
 export interface ErrorResponse {
   readonly error: string;
@@ -50,7 +51,7 @@ function statusForDomainError(exception: Error): number {
 
 @Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(DomainExceptionFilter.name);
+  constructor(@Inject(LOGGER) private readonly logger: Logger) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<HttpResponse>();
@@ -88,7 +89,17 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
 
     if (isDomainError(exception)) {
-      response.status(statusForDomainError(exception)).json({
+      const statusCode = statusForDomainError(exception);
+
+      if (statusCode >= 400 && statusCode < 500) {
+        this.logger.warn('Domain error handled', {
+          context: 'DomainExceptionFilter',
+          errorName: exception.name,
+          statusCode,
+        });
+      }
+
+      response.status(statusCode).json({
         error: exception.name,
         message: exception.message,
       } satisfies ErrorResponse);
@@ -97,7 +108,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
     this.logger.error(
       exception instanceof Error ? exception.message : String(exception),
-      exception instanceof Error ? exception.stack : undefined,
+      {
+        context: 'DomainExceptionFilter',
+        stack: exception instanceof Error ? exception.stack : undefined,
+        exceptionName: exception instanceof Error ? exception.name : typeof exception,
+      },
     );
     response.status(500).json({
       error: 'InternalServerError',

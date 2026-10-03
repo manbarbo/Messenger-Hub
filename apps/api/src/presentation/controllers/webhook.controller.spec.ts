@@ -8,12 +8,20 @@ import request from 'supertest';
 import { WebhookController } from './webhook.controller';
 import { ProcessIncomingMessageCommand } from '@application/commands/process-incoming-message/process-incoming-message.command';
 import type { ProcessIncomingMessageResult } from '@application/commands/process-incoming-message/process-incoming-message.handler';
+import { LOGGER } from '@domain/services';
 
 const validBody = {
   message_id: 'wamid.001',
   from: '+573001112233',
   text: 'Hola, quiero una cita',
   timestamp: '2026-10-06T03:40:00Z',
+};
+
+const mockLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
 };
 
 function createConfigService(values: Record<string, string> = {}): ConfigService {
@@ -29,11 +37,16 @@ describe('WebhookController', () => {
 
   async function createApp(configValues: Record<string, string> = {}): Promise<INestApplication> {
     commandBus = { execute: vi.fn() };
+    mockLogger.debug.mockClear();
+    mockLogger.info.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.error.mockClear();
     const moduleRef = await Test.createTestingModule({
       controllers: [WebhookController],
       providers: [
         { provide: CommandBus, useValue: commandBus },
         { provide: ConfigService, useValue: createConfigService(configValues) },
+        { provide: LOGGER, useValue: mockLogger },
       ],
     }).compile();
 

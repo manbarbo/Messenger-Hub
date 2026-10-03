@@ -8,10 +8,18 @@ import request from 'supertest';
 import { SimulatorController } from './simulator.controller';
 import { ProcessIncomingMessageCommand } from '@application/commands/process-incoming-message/process-incoming-message.command';
 import type { ProcessIncomingMessageResult } from '@application/commands/process-incoming-message/process-incoming-message.handler';
+import { LOGGER } from '@domain/services';
 
 const validBody = {
   from: '+573009998877',
   text: '¿Qué horarios tienen para exámenes de sangre?',
+};
+
+const mockLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
 };
 
 function createConfigService(values: Record<string, string> = {}): ConfigService {
@@ -27,11 +35,16 @@ describe('SimulatorController', () => {
 
   async function createApp(configValues: Record<string, string> = {}): Promise<INestApplication> {
     commandBus = { execute: vi.fn() };
+    mockLogger.debug.mockClear();
+    mockLogger.info.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.error.mockClear();
     const moduleRef = await Test.createTestingModule({
       controllers: [SimulatorController],
       providers: [
         { provide: CommandBus, useValue: commandBus },
         { provide: ConfigService, useValue: createConfigService(configValues) },
+        { provide: LOGGER, useValue: mockLogger },
       ],
     }).compile();
 

@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Conversation } from '@domain/entities/conversation.entity';
 import { ConversationStatus } from '@domain/enums/conversation-status.enum';
 import type { ConversationRepository } from '@domain/repositories/conversation.repository';
+import { LOGGER, type Logger } from '@domain/services';
 import { createPaginatedResult } from '@domain/value-objects/pagination.vo';
 import type { ConversationFilters } from '@domain/value-objects/conversation-filters.vo';
 import type { PaginationParams } from '@domain/value-objects/pagination.vo';
@@ -31,7 +32,10 @@ function toDomain(doc: ConversationDocument): Conversation {
 
 @Injectable()
 export class MongoConversationRepository implements ConversationRepository {
-  constructor(private readonly mongo: MongoService) {}
+  constructor(
+    private readonly mongo: MongoService,
+    @Inject(LOGGER) private readonly logger: Logger,
+  ) {}
 
   private get collection() {
     return this.mongo.getCollection<ConversationDocument>(MONGO_COLLECTIONS.conversations);
@@ -96,6 +100,12 @@ export class MongoConversationRepository implements ConversationRepository {
     };
 
     await this.collection.insertOne(doc);
+
+    this.logger.debug('Conversation created', {
+      context: 'MongoConversationRepository',
+      conversationId: conversation.id,
+    });
+
     return toDomain(doc);
   }
 
@@ -104,5 +114,11 @@ export class MongoConversationRepository implements ConversationRepository {
       { _id: id },
       { $set: { status, updatedAt: new Date() } },
     );
+
+    this.logger.debug('Conversation status updated', {
+      context: 'MongoConversationRepository',
+      conversationId: id,
+      newStatus: status,
+    });
   }
 }

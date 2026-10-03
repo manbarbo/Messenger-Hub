@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { isAppApiError } from '../../core/app-api.error';
+import { LoggerService } from '../../core/logger.service';
 import type { ConversationDetail } from '../../core/models/conversation.model';
 import { ErrorMessageComponent } from '../../shared/error-message/error-message.component';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
@@ -28,6 +29,7 @@ export class ConversationDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly logger = inject(LoggerService);
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -39,12 +41,16 @@ export class ConversationDetailComponent {
       const id = params.get('id');
       this.conversationId.set(id);
       if (id) {
+        this.logger.debug('Route params received', 'ConversationDetail', { id });
         this.loadConversation(id);
+      } else {
+        this.logger.warn('No conversation ID in route params', 'ConversationDetail');
       }
     });
   }
 
   goBack(): void {
+    this.logger.debug('Navigating back to conversation list', 'ConversationDetail');
     void this.router.navigate(['/conversations']);
   }
 
@@ -63,10 +69,20 @@ export class ConversationDetailComponent {
         next: (conversation) => {
           this.conversation.set(conversation);
           this.loading.set(false);
+          this.logger.debug('Conversation loaded', 'ConversationDetail', {
+            id,
+            status: conversation.status,
+            messageCount: conversation.messages.length,
+            traceCount: conversation.aiTraces.length,
+          });
         },
         error: (err: unknown) => {
           this.error.set(isAppApiError(err) ? err.message : 'Failed to load conversation');
           this.loading.set(false);
+          this.logger.error('Failed to load conversation', 'ConversationDetail', {
+            id,
+            message: err instanceof Error ? err.message : String(err),
+          });
         },
       });
   }

@@ -21,6 +21,7 @@ describe('PrismaSlotRepository', () => {
       update: ReturnType<typeof vi.fn>;
     };
   };
+  let logger: { debug: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   let repository: PrismaSlotRepository;
 
   beforeEach(() => {
@@ -31,7 +32,8 @@ describe('PrismaSlotRepository', () => {
         update: vi.fn(),
       },
     };
-    repository = new PrismaSlotRepository(prisma as never);
+    logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    repository = new PrismaSlotRepository(prisma as never, logger as never);
   });
 
   describe('findAvailable', () => {

@@ -102,6 +102,7 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 7 | Seed data (PG knowledge base + Mongo samples) | Completed |
 | 8 | Testing & coverage gate (≥ 75%) | Completed |
 | 9 | Logging (backend Winston + frontend error tracking) | Completed |
+| 9.3 | Add Structured Logging Across Application | Completed |
 
 See [plans/master_plan.md](./plans/master_plan.md) for the full task breakdown.
 
@@ -260,7 +261,7 @@ Private — for evaluation purposes only.
 
 Full decision record in [DECISIONS.md](./DECISIONS.md).
 
-## Logging (Phase 9 — Planned)
+## Logging (Phase 9 — Implemented)
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
@@ -272,3 +273,5 @@ Full decision record in [DECISIONS.md](./DECISIONS.md).
 | Error Boundary | `ErrorBoundaryComponent` | Fallback UI on unhandled errors |
 
 See [DECISIONS.md §17](./DECISIONS.md#17-structured-logging) and [DESIGN.md §10](./DESIGN.md#10-logging-architecture) for details.
+
+**Structured logging is mandatory for all new code.** Every new service, handler, controller, repository, and infrastructure adapter must include structured logging using `LOGGER` (backend) or `LoggerService` (frontend). See [AGENTS.md §18](./AGENTS.md) for the full logging requirements.

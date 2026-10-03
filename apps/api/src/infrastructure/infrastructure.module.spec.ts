@@ -17,6 +17,7 @@ import {
   QUEUE_SERVICE,
   SLOT_REPOSITORY,
 } from '@domain/index';
+import { LOGGER } from '@domain/services';
 import { ApplicationModule } from '../application/application.module';
 import { CancelAppointmentHandler } from '../application/commands/cancel-appointment/cancel-appointment.handler';
 import { CreateAppointmentHandler } from '../application/commands/create-appointment/create-appointment.handler';
@@ -39,6 +40,7 @@ const mockPrisma = {};
 const mockMongo = {};
 const mockEmbedding = { embed: async () => [0.1, 0.2] };
 const mockEventEmitter = { emit: vi.fn() };
+const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 const mockConfigService = {
   get: <T>(key: string, defaultValue?: T): T | undefined => {
     const values: Record<string, string> = {
@@ -61,6 +63,7 @@ const mockConfigService = {
     { provide: EventEmitter2, useValue: mockEventEmitter },
     { provide: ConfigService, useValue: mockConfigService },
     { provide: QUEUE_SERVICE, useValue: { push: vi.fn() } },
+    { provide: LOGGER, useValue: mockLogger },
   ],
   exports: [
     PrismaService,
@@ -69,6 +72,7 @@ const mockConfigService = {
     EventEmitter2,
     ConfigService,
     QUEUE_SERVICE,
+    LOGGER,
   ],
 })
 class MockInfrastructureDepsModule {}

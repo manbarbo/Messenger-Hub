@@ -5,14 +5,18 @@ import { LoggingInterceptor } from './presentation/interceptors/logging.intercep
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const logger = app.get(LOGGER);
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:4200',
     credentials: true,
   });
-  app.useGlobalInterceptors(new LoggingInterceptor(app.get(LOGGER)));
+  app.useGlobalInterceptors(new LoggingInterceptor(logger));
   app.enableShutdownHooks();
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.info(`API listening on http://localhost:${port}`);
+  logger.info(`API listening on http://localhost:${port}`, {
+    context: 'Main',
+    port,
+  });
 }
 void bootstrap();

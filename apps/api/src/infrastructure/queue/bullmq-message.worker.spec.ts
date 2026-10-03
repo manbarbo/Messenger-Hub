@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { MessageProcessorService } from '@application/worker/message-processor.service';
+import type { Logger } from '@domain/services';
 import type { QueueJob } from '@domain/value-objects/queue-job.vo';
 import { BullMQQueueService, MESSAGE_PROCESSING_QUEUE } from './bullmq-queue.service';
 import { BullMQMessageWorker } from './bullmq-message.worker';
@@ -40,6 +40,10 @@ vi.mock('bullmq', () => ({
   },
 }));
 
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
+
 function createConfigService(): ConfigService {
   const values: Record<string, string> = {
     REDIS_HOST: 'localhost',
@@ -59,16 +63,19 @@ function getFailedHandler(instance: (typeof workerInstances)[number]): (job: unk
 describe('BullMQMessageWorker', () => {
   let messageProcessor: { process: ReturnType<typeof vi.fn> };
   let queueService: { pushToDlq: ReturnType<typeof vi.fn> };
+  let logger: Logger;
 
   beforeEach(() => {
     workerInstances.length = 0;
     workerConstructorMock.mockReset();
     messageProcessor = { process: vi.fn().mockResolvedValue(undefined) };
     queueService = { pushToDlq: vi.fn().mockResolvedValue(undefined) };
+    logger = createMockLogger();
   });
 
   function createWorker(): BullMQMessageWorker {
     return new BullMQMessageWorker(
+      logger,
       createConfigService(),
       messageProcessor as unknown as MessageProcessorService,
       queueService as unknown as BullMQQueueService,
@@ -162,7 +169,6 @@ describe('BullMQMessageWorker', () => {
   });
 
   it('logs DLQ push failures without throwing', async () => {
-    const errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     queueService.pushToDlq.mockRejectedValue(new Error('dlq down'));
     const worker = createWorker();
     await worker.onModuleInit();
@@ -182,12 +188,14 @@ describe('BullMQMessageWorker', () => {
     await Promise.resolve();
 
     expect(queueService.pushToDlq).toHaveBeenCalled();
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to push job job-3 to DLQ'));
-    errorSpy.mockRestore();
+    expect(logger.error).toHaveBeenNthCalledWith(2, 'Failed to push job to DLQ', {
+      context: 'BullMQMessageWorker',
+      jobId: 'job-3',
+      error: expect.stringContaining('dlq down'),
+    });
   });
 
   it('logs completed jobs', async () => {
-    const debugSpy = vi.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
     const worker = createWorker();
     await worker.onModuleInit();
 
@@ -195,7 +203,9 @@ describe('BullMQMessageWorker', () => {
     expect(completedCall).toBeDefined();
     completedCall?.[1]({ id: 'job-done' });
 
-    expect(debugSpy).toHaveBeenCalledWith('Job job-done completed');
-    debugSpy.mockRestore();
+    expect(logger.debug).toHaveBeenCalledWith('Job completed', {
+      context: 'BullMQMessageWorker',
+      jobId: 'job-done',
+    });
   });
 });

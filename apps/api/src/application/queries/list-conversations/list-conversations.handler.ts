@@ -3,6 +3,7 @@ import { QueryHandler, IQueryHandler } from '@nestjs/cqrs';
 import type { Conversation } from '@domain/entities/conversation.entity';
 import { CLINIC_REPOSITORY, CONVERSATION_REPOSITORY } from '@domain/repositories';
 import type { ClinicRepository, ConversationRepository } from '@domain/repositories';
+import { LOGGER, type Logger } from '@domain/services';
 import type { PaginatedResult } from '@domain/value-objects/pagination.vo';
 import type { ConversationSummary } from '../../dto/conversation-view';
 import { ListConversationsQuery } from './list-conversations.query';
@@ -16,6 +17,7 @@ export class ListConversationsHandler
     @Inject(CONVERSATION_REPOSITORY)
     private readonly conversationRepository: ConversationRepository,
     @Inject(CLINIC_REPOSITORY) private readonly clinicRepository: ClinicRepository,
+    @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
   async execute(
@@ -32,6 +34,11 @@ export class ListConversationsHandler
     for (const conversation of page.items) {
       items.push(await this.toSummary(conversation, clinicNameCache));
     }
+
+    this.logger.debug('Conversations list loaded', {
+      context: 'ListConversationsHandler',
+      total: page.total,
+    });
 
     return {
       items,

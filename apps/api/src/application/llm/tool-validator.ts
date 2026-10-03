@@ -8,6 +8,7 @@ import {
   type DoctorRepository,
   type SlotRepository,
 } from '@domain/repositories';
+import { LOGGER, type Logger } from '@domain/services';
 import type { LLMToolDefinition } from '@domain/value-objects/llm-chat.vo';
 import { TOOL_DEFINITIONS } from './tool-definitions';
 import { TOOL_SCHEMAS, type ToolName } from './tool-schemas';
@@ -44,6 +45,7 @@ function slotMatchesRequestedTime(slot: Slot, fecha: string, hora: string): bool
 @Injectable()
 export class ToolValidator {
   constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
     @Inject(CLINIC_REPOSITORY) private readonly clinicRepository: ClinicRepository,
     @Inject(DOCTOR_REPOSITORY) private readonly doctorRepository: DoctorRepository,
     @Inject(SLOT_REPOSITORY) private readonly slotRepository: SlotRepository,
@@ -63,24 +65,37 @@ export class ToolValidator {
     context: ToolValidationContext,
   ): Promise<ToolValidationResult> {
     if (!this.isKnownTool(toolName)) {
+      this.logger.warn('Unknown tool rejected', {
+        context: 'ToolValidator',
+        toolName,
+        reason: 'unknown_tool',
+      });
       return { valid: false, error: `Unknown tool: ${toolName}` };
     }
 
     const schema = TOOL_SCHEMAS[toolName];
     const result = schema.safeParse(args);
     if (!result.success) {
-      return { valid: false, error: formatZodErrors(result.error) };
+      const validationError = formatZodErrors(result.error);
+      this.logger.warn('Tool arguments failed Zod validation', {
+        context: 'ToolValidator',
+        toolName,
+        validationError,
+      });
+      return { valid: false, error: validationError };
     }
 
     switch (toolName) {
       case 'buscar_conocimiento':
       case 'escalar_a_humano':
+        this.logValidationSuccess(toolName);
         return { valid: true, parsed: result.data as Record<string, unknown> };
 
       case 'consultar_disponibilidad':
         return this.validateAvailabilityArgs(
           result.data as { especialidad: string; sede: string; fecha: string },
           context,
+          toolName,
         );
 
       case 'agendar_cita':
@@ -94,20 +109,44 @@ export class ToolValidator {
             paciente_nombre?: string;
           },
           context,
+          toolName,
         );
 
       default:
+        this.logger.warn('Unknown tool rejected', {
+          context: 'ToolValidator',
+          toolName,
+          reason: 'unknown_tool',
+        });
         return { valid: false, error: `Unknown tool: ${toolName}` };
     }
+  }
+
+  private logValidationSuccess(toolName: string): void {
+    this.logger.debug('Tool validation succeeded', {
+      context: 'ToolValidator',
+      toolName,
+    });
+  }
+
+  private logDomainValidationFailure(toolName: string, field: string, reason: string): void {
+    this.logger.warn('Tool domain validation failed', {
+      context: 'ToolValidator',
+      toolName,
+      field,
+      reason,
+    });
   }
 
   private async validateAvailabilityArgs(
     data: { especialidad: string; sede: string; fecha: string },
     context: ToolValidationContext,
+    toolName: string,
   ): Promise<ToolValidationResult> {
     const now = context.now ?? new Date();
 
     if (isColombiaDateInPast(data.fecha, now)) {
+      this.logDomainValidationFailure(toolName, 'fecha', 'past_date');
       return {
         valid: false,
         error: `La fecha ${data.fecha} ya pasó (hora de Colombia). Elige una fecha futura.`,
@@ -116,6 +155,7 @@ export class ToolValidator {
 
     const clinic = await this.clinicRepository.findByName(data.sede);
     if (!clinic) {
+      this.logDomainValidationFailure(toolName, 'sede', 'clinic_not_found');
       return {
         valid: false,
         error: `No se encontró la sede "${data.sede}". Verifica el nombre de la clínica.`,
@@ -123,6 +163,7 @@ export class ToolValidator {
     }
 
     if (clinic.id !== context.clinicId) {
+      this.logDomainValidationFailure(toolName, 'sede', 'clinic_mismatch');
       return {
         valid: false,
         error: `La sede "${data.sede}" no pertenece a esta clínica.`,
@@ -134,12 +175,14 @@ export class ToolValidator {
       data.especialidad,
     );
     if (!specialtyExists) {
+      this.logDomainValidationFailure(toolName, 'especialidad', 'specialty_not_found');
       return {
         valid: false,
         error: `La especialidad "${data.especialidad}" no está disponible en la sede "${data.sede}".`,
       };
     }
 
+    this.logValidationSuccess(toolName);
     return {
       valid: true,
       parsed: { ...data, clinicId: clinic.id },
@@ -156,14 +199,16 @@ export class ToolValidator {
       paciente_nombre?: string;
     },
     context: ToolValidationContext,
+    toolName: string,
   ): Promise<ToolValidationResult> {
-    const availability = await this.validateAvailabilityArgs(data, context);
+    const availability = await this.validateAvailabilityArgs(data, context, toolName);
     if (!availability.valid) {
       return availability;
     }
 
     const now = context.now ?? new Date();
     if (isColombiaDateTimeInPast(data.fecha, data.hora, now)) {
+      this.logDomainValidationFailure(toolName, 'hora', 'past_datetime');
       return {
         valid: false,
         error: `La fecha y hora ${data.fecha} ${data.hora} ya pasó (hora de Colombia). Elige un horario futuro.`,
@@ -176,12 +221,14 @@ export class ToolValidator {
     const matchingSlot = slots.find((slot) => slotMatchesRequestedTime(slot, data.fecha, data.hora));
 
     if (!matchingSlot) {
+      this.logDomainValidationFailure(toolName, 'hora', 'slot_not_found');
       return {
         valid: false,
         error: `No hay disponibilidad para ${data.especialidad} el ${data.fecha} a las ${data.hora}. Consulta otros horarios.`,
       };
     }
 
+    this.logValidationSuccess(toolName);
     return {
       valid: true,
       parsed: {

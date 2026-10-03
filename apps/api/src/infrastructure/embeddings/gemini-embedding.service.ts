@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import type { EmbeddingService } from '@domain/services/embedding.service';
+import { LOGGER, type Logger } from '@domain/services';
 import { LLMProviderError } from '@domain/errors/llm-provider.error';
 import { ValidationError } from '@domain/errors/validation.error';
 
@@ -14,7 +15,10 @@ export class GeminiEmbeddingService implements EmbeddingService {
   private readonly model: string;
   private readonly dimensions: number;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
+    private readonly configService: ConfigService,
+  ) {
     this.client = new OpenAI({
       apiKey: this.configService.get<string>('LLM_API_KEY'),
       baseURL: this.configService.get<string>('LLM_BASE_URL'),
@@ -35,6 +39,13 @@ export class GeminiEmbeddingService implements EmbeddingService {
         { field: 'text', message: 'must be a non-empty string' },
       ]);
     }
+
+    this.logger.debug('Embedding request', {
+      context: 'GeminiEmbeddingService',
+      model: this.model,
+      dimensions: this.dimensions,
+      textLength: input.length,
+    });
 
     try {
       const response = await this.client.embeddings.create({
@@ -61,13 +72,25 @@ export class GeminiEmbeddingService implements EmbeddingService {
         );
       }
 
+      this.logger.debug('Embedding received', {
+        context: 'GeminiEmbeddingService',
+        model: this.model,
+        vectorLength: embedding.length,
+      });
+
       return embedding;
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown embedding provider error';
+      this.logger.error('Embedding request failed', {
+        context: 'GeminiEmbeddingService',
+        model: this.model,
+        error: message,
+      });
+
       if (error instanceof ValidationError || error instanceof LLMProviderError) {
         throw error;
       }
 
-      const message = error instanceof Error ? error.message : 'Unknown embedding provider error';
       throw new LLMProviderError(`Embedding request failed: ${message}`, error);
     }
   }

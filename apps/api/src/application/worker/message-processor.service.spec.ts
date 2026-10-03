@@ -4,11 +4,16 @@ import type { AIOrchestratorService, OrchestratorTurnResult } from '../llm/ai-or
 import { ConversationStatus } from '@domain/enums/conversation-status.enum';
 import type { Message } from '@domain/entities/message.entity';
 import type { ConversationRepository, MessageRepository } from '@domain/repositories';
+import type { Logger } from '@domain/services';
 import type { QueueJob } from '@domain/value-objects/queue-job.vo';
 import {
   buildAssistantMessageId,
   MessageProcessorService,
 } from './message-processor.service';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 const job: QueueJob = {
   conversationId: 'conv-1',
@@ -46,6 +51,7 @@ describe('MessageProcessorService', () => {
       updateStatus: vi.fn(),
     };
     service = new MessageProcessorService(
+      createMockLogger(),
       orchestrator as unknown as AIOrchestratorService,
       messageRepository as unknown as MessageRepository,
       conversationRepository as unknown as ConversationRepository,

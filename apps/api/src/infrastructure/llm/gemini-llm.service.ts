@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import type {
@@ -8,6 +8,7 @@ import type {
   ChatCompletionTool,
 } from 'openai/resources/chat/completions';
 import type { LLMService } from '@domain/services/llm.service';
+import { LOGGER, type Logger } from '@domain/services';
 import type {
   LLMChatParams,
   LLMChatResult,
@@ -111,7 +112,10 @@ function toDomainToolCalls(
 export class GeminiLLMService implements LLMService {
   private readonly client: OpenAI;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
+    private readonly configService: ConfigService,
+  ) {
     this.client = new OpenAI({
       apiKey: this.configService.get<string>('LLM_API_KEY'),
       baseURL: this.configService.get<string>('LLM_BASE_URL'),
@@ -121,6 +125,13 @@ export class GeminiLLMService implements LLMService {
   async chat(params: LLMChatParams): Promise<LLMChatResult> {
     const startTime = Date.now();
     const model = params.model ?? this.configService.get<string>('LLM_MODEL', DEFAULT_MODEL);
+
+    this.logger.debug('LLM request initiated', {
+      context: 'GeminiLLMService',
+      model,
+      messageCount: params.messages.length,
+      hasTools: Boolean(params.tools?.length),
+    });
 
     const request: ChatCompletionCreateParamsNonStreaming = {
       model,
@@ -146,28 +157,54 @@ export class GeminiLLMService implements LLMService {
       const choice = response.choices?.[0];
 
       if (!choice?.message) {
+        this.logger.warn('LLM returned an empty response', {
+          context: 'GeminiLLMService',
+          model,
+          reason: 'empty_response',
+        });
         throw new LLMProviderError('LLM returned an empty response');
       }
 
       const inputTokens = response.usage?.prompt_tokens ?? 0;
       const outputTokens = response.usage?.completion_tokens ?? 0;
+      const toolCalls = toDomainToolCalls(choice.message.tool_calls);
+      const resolvedModel = response.model || model;
+      const finishReason = choice.finish_reason ?? 'unknown';
+      const costUsd = calculateCostUsd(inputTokens, outputTokens);
 
-      return {
-        content: choice.message.content,
-        toolCalls: toDomainToolCalls(choice.message.tool_calls),
-        model: response.model || model,
+      this.logger.info('LLM response received', {
+        context: 'GeminiLLMService',
+        model: resolvedModel,
         inputTokens,
         outputTokens,
         latencyMs,
-        costUsd: calculateCostUsd(inputTokens, outputTokens),
-        finishReason: choice.finish_reason ?? 'unknown',
+        costUsd,
+        finishReason,
+        hasToolCalls: toolCalls.length > 0,
+      });
+
+      return {
+        content: choice.message.content,
+        toolCalls,
+        model: resolvedModel,
+        inputTokens,
+        outputTokens,
+        latencyMs,
+        costUsd,
+        finishReason,
       };
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown LLM provider error';
+      this.logger.error('LLM request failed', {
+        context: 'GeminiLLMService',
+        model,
+        error: message,
+      });
+
       if (error instanceof LLMProviderError) {
         throw error;
       }
 
-      const message = error instanceof Error ? error.message : 'Unknown LLM provider error';
       throw new LLMProviderError(`LLM request failed: ${message}`, error);
     }
   }

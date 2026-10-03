@@ -24,4 +24,12 @@ bootstrapApplication(App, appConfig)
       });
     });
   })
-  .catch((err) => console.error(err));
+  .catch((err) => {
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'Application bootstrap failed',
+      context: 'Bootstrap',
+      data: { message: err?.message, stack: err?.stack },
+      timestamp: new Date().toISOString(),
+    }));
+  });

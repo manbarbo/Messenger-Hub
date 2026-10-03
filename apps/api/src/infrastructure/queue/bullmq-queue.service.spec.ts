@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
+import type { Logger } from '@domain/services';
 import type { QueueJob } from '@domain/value-objects/queue-job.vo';
 import {
   BullMQQueueService,
@@ -34,6 +35,10 @@ vi.mock('bullmq', () => ({
   },
 }));
 
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
+
 function createConfigService(overrides: Record<string, string> = {}): ConfigService {
   const values: Record<string, string> = {
     REDIS_HOST: 'localhost',
@@ -58,6 +63,10 @@ function sampleJob(overrides: Partial<QueueJob> = {}): QueueJob {
   };
 }
 
+function createService(config: ConfigService = createConfigService()): BullMQQueueService {
+  return new BullMQQueueService(createMockLogger(), config);
+}
+
 describe('BullMQQueueService', () => {
   beforeEach(() => {
     addMock.mockReset();
@@ -66,7 +75,7 @@ describe('BullMQQueueService', () => {
   });
 
   it('configures main and DLQ queues from Redis env vars', () => {
-    new BullMQQueueService(createConfigService({ REDIS_HOST: 'redis', REDIS_PORT: '6380' }));
+    createService(createConfigService({ REDIS_HOST: 'redis', REDIS_PORT: '6380' }));
 
     expect(queueConstructorMock).toHaveBeenCalledWith(
       MESSAGE_PROCESSING_QUEUE,
@@ -89,7 +98,7 @@ describe('BullMQQueueService', () => {
   });
 
   it('falls back to localhost:6379 when Redis env vars are missing', () => {
-    new BullMQQueueService(createConfigService({ REDIS_HOST: '', REDIS_PORT: '' }));
+    createService(createConfigService({ REDIS_HOST: '', REDIS_PORT: '' }));
 
     expect(queueConstructorMock).toHaveBeenCalledWith(
       MESSAGE_PROCESSING_QUEUE,
@@ -100,7 +109,7 @@ describe('BullMQQueueService', () => {
   });
 
   it('push() adds a process-message job to the main queue with full payload', async () => {
-    const service = new BullMQQueueService(createConfigService());
+    const service = createService();
     const job = sampleJob();
 
     await service.push(job);
@@ -110,7 +119,7 @@ describe('BullMQQueueService', () => {
   });
 
   it('pushToDlq() adds a process-message job to the dead letter queue', async () => {
-    const service = new BullMQQueueService(createConfigService());
+    const service = createService();
     const job = sampleJob({ messageId: 'failed-1' });
 
     await service.pushToDlq(job);
@@ -121,13 +130,13 @@ describe('BullMQQueueService', () => {
 
   it('propagates queue failures from push()', async () => {
     addMock.mockRejectedValueOnce(new Error('redis down'));
-    const service = new BullMQQueueService(createConfigService());
+    const service = createService();
 
     await expect(service.push(sampleJob())).rejects.toThrow('redis down');
   });
 
   it('closes both queues on module destroy', async () => {
-    const service = new BullMQQueueService(createConfigService());
+    const service = createService();
 
     await service.onModuleDestroy();
 

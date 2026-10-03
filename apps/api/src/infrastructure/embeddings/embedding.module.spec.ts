@@ -2,9 +2,11 @@ import 'reflect-metadata';
 import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { EMBEDDING_SERVICE } from '@domain/services';
+import { EMBEDDING_SERVICE, LOGGER } from '@domain/services';
 import { GeminiEmbeddingService } from './gemini-embedding.service';
 import { EmbeddingModule } from './embedding.module';
+
+const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
 const mockConfigService = {
   get: <T>(key: string, defaultValue?: T): T | undefined => {
@@ -20,8 +22,11 @@ const mockConfigService = {
 
 @Global()
 @Module({
-  providers: [{ provide: ConfigService, useValue: mockConfigService }],
-  exports: [ConfigService],
+  providers: [
+    { provide: ConfigService, useValue: mockConfigService },
+    { provide: LOGGER, useValue: mockLogger },
+  ],
+  exports: [ConfigService, LOGGER],
 })
 class MockConfigModule {}
 

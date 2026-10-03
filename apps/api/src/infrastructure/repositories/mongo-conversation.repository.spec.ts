@@ -41,6 +41,7 @@ describe('MongoConversationRepository', () => {
     toArray: ReturnType<typeof vi.fn>;
   };
   let mongo: { getCollection: ReturnType<typeof vi.fn> };
+  let logger: { debug: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   let repository: MongoConversationRepository;
 
   beforeEach(() => {
@@ -58,7 +59,8 @@ describe('MongoConversationRepository', () => {
       updateOne: vi.fn(),
     };
     mongo = { getCollection: vi.fn().mockReturnValue(collection) };
-    repository = new MongoConversationRepository(mongo as never);
+    logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    repository = new MongoConversationRepository(mongo as never, logger as never);
   });
 
   it('uses the conversations collection', () => {

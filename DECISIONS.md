@@ -4,7 +4,7 @@
 
 This document captures the key architectural and technical decisions made during the design and implementation of MessengerHub, along with their context, rationale, and trade-offs.
 
-> **Implementation status (2026-10-02):** Phases 1–8 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration, async processing, API layer, frontend dashboard, seed data, testing & coverage). Phase 9 (Logging) is planned. Decisions below marked with *(implemented)* reflect choices already visible in code; others describe target design.
+> **Implementation status (2026-10-03):** All phases 1–9 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration, async processing, API layer, frontend dashboard, seed data, testing & coverage, structured logging). Decisions below marked with *(implemented)* reflect choices already visible in code; others describe target design.
 
 ---
 
@@ -587,7 +587,7 @@ class MockLLMService implements LLMService {
 
 # 17. Structured Logging
 
-**Status:** Accepted — Planned (T-9.1 backend, T-9.2 frontend)
+**Status:** Accepted *(implemented in Phase 9 — T-9.1 backend, T-9.2 frontend, T-9.3 application-wide)*
 
 **Context:** The system needs observability for debugging LLM interactions, tracking costs, and investigating incidents. Logs must be structured (not free-text strings) and environment-aware. Both backend and frontend need logging.
 

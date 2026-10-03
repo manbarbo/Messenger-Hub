@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Slot } from '@domain/entities/slot.entity';
 import type { SlotRepository } from '@domain/repositories/slot.repository';
+import { LOGGER, type Logger } from '@domain/services';
 import { PrismaService } from '../database/prisma.service';
 
 interface PrismaSlot {
@@ -35,7 +36,10 @@ function dayRangeUtc(date: Date): { start: Date; end: Date } {
 
 @Injectable()
 export class PrismaSlotRepository implements SlotRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(LOGGER) private readonly logger: Logger,
+  ) {}
 
   async findAvailable(clinicId: string, specialty: string, date: Date): Promise<Slot[]> {
     const { start, end } = dayRangeUtc(date);
@@ -48,6 +52,13 @@ export class PrismaSlotRepository implements SlotRepository {
         doctor: { specialty, active: true },
       },
       orderBy: { startTime: 'asc' },
+    });
+
+    this.logger.debug('Available slots found', {
+      context: 'PrismaSlotRepository',
+      clinicId,
+      specialty,
+      slotCount: rows.length,
     });
 
     return rows.map(toDomain);
@@ -70,12 +81,24 @@ export class PrismaSlotRepository implements SlotRepository {
       where: { id },
       data: { isBooked: true },
     });
+
+    this.logger.debug('Slot marked', {
+      context: 'PrismaSlotRepository',
+      slotId: id,
+      action: 'mark_as_booked',
+    });
   }
 
   async markAsAvailable(id: string): Promise<void> {
     await this.prisma.slot.update({
       where: { id },
       data: { isBooked: false },
+    });
+
+    this.logger.debug('Slot marked', {
+      context: 'PrismaSlotRepository',
+      slotId: id,
+      action: 'mark_as_available',
     });
   }
 }

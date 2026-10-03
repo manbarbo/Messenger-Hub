@@ -9,6 +9,7 @@ import { ListConversationsQuery } from '@application/queries/list-conversations/
 import { GetConversationDetailQuery } from '@application/queries/get-conversation-detail/get-conversation-detail.query';
 import { ConversationNotFoundError } from '@domain/errors';
 import { ConversationStatus } from '@domain/enums/conversation-status.enum';
+import { LOGGER } from '@domain/services';
 
 const listResult = {
   items: [
@@ -42,15 +43,29 @@ const detailResult = {
   aiTraces: [],
 };
 
+const mockLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+};
+
 describe('ConversationsController', () => {
   let queryBus: { execute: ReturnType<typeof vi.fn> };
   let app: INestApplication;
 
   async function createApp(): Promise<INestApplication> {
     queryBus = { execute: vi.fn() };
+    mockLogger.debug.mockClear();
+    mockLogger.info.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.error.mockClear();
     const moduleRef = await Test.createTestingModule({
       controllers: [ConversationsController],
-      providers: [{ provide: QueryBus, useValue: queryBus }],
+      providers: [
+        { provide: QueryBus, useValue: queryBus },
+        { provide: LOGGER, useValue: mockLogger },
+      ],
     }).compile();
 
     app = moduleRef.createNestApplication();

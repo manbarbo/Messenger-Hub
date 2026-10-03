@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
+import type { Logger } from '@domain/services';
 import { MongoService } from './mongo.service';
 
 const { MongoClientMock } = vi.hoisted(() => ({
@@ -10,6 +11,10 @@ const { MongoClientMock } = vi.hoisted(() => ({
 vi.mock('mongodb', () => ({
   MongoClient: MongoClientMock,
 }));
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 function createConfigService(values: Record<string, string | undefined>): ConfigService {
   return {
@@ -38,20 +43,24 @@ function createClientMock(overrides: Record<string, unknown> = {}) {
   return { client, db, collection, connect, close, ...overrides };
 }
 
+function createService(config: ConfigService): MongoService {
+  return new MongoService(createMockLogger(), config);
+}
+
 describe('MongoService', () => {
   beforeEach(() => {
     MongoClientMock.mockReset();
   });
 
   it('throws when MONGODB_URI is not configured', async () => {
-    const service = new MongoService(createConfigService({}));
+    const service = createService(createConfigService({}));
 
     await expect(service.onModuleInit()).rejects.toThrow('MONGODB_URI is not configured');
   });
 
   it('connects using MONGODB_DB when provided', async () => {
     const mocks = createClientMock();
-    const service = new MongoService(
+    const service = createService(
       createConfigService({
         MONGODB_URI: 'mongodb://localhost:27017',
         MONGODB_DB: 'messenger_hub_test',
@@ -67,7 +76,7 @@ describe('MongoService', () => {
 
   it('falls back to db name from URI path and default name', async () => {
     createClientMock();
-    const service = new MongoService(
+    const service = createService(
       createConfigService({ MONGODB_URI: 'mongodb://localhost:27017/from_uri' }),
     );
 
@@ -81,7 +90,7 @@ describe('MongoService', () => {
 
   it('defaults to messenger_hub when URI has no path db name', async () => {
     const mocks = createClientMock();
-    const service = new MongoService(
+    const service = createService(
       createConfigService({ MONGODB_URI: 'mongodb://localhost:27017' }),
     );
 
@@ -92,7 +101,7 @@ describe('MongoService', () => {
 
   it('resolves undefined db name when URI path is root only', async () => {
     const mocks = createClientMock();
-    const service = new MongoService(
+    const service = createService(
       createConfigService({ MONGODB_URI: 'mongodb://localhost:27017/' }),
     );
 
@@ -103,7 +112,7 @@ describe('MongoService', () => {
 
   it('closes the client on module destroy', async () => {
     const mocks = createClientMock();
-    const service = new MongoService(
+    const service = createService(
       createConfigService({ MONGODB_URI: 'mongodb://localhost:27017', MONGODB_DB: 'db1' }),
     );
 
@@ -114,20 +123,20 @@ describe('MongoService', () => {
   });
 
   it('throws when getDb is called before initialization', () => {
-    const service = new MongoService(createConfigService({}));
+    const service = createService(createConfigService({}));
 
     expect(() => service.getDb()).toThrow('MongoService is not initialized');
   });
 
   it('throws when getClient is called before initialization', () => {
-    const service = new MongoService(createConfigService({}));
+    const service = createService(createConfigService({}));
 
     expect(() => service.getClient()).toThrow('MongoService is not initialized');
   });
 
   it('returns collection from the connected db', async () => {
     const mocks = createClientMock();
-    const service = new MongoService(
+    const service = createService(
       createConfigService({ MONGODB_URI: 'mongodb://localhost:27017', MONGODB_DB: 'db1' }),
     );
     await service.onModuleInit();
@@ -140,7 +149,7 @@ describe('MongoService', () => {
 
   it('returns the underlying MongoClient', async () => {
     const mocks = createClientMock();
-    const service = new MongoService(
+    const service = createService(
       createConfigService({ MONGODB_URI: 'mongodb://localhost:27017', MONGODB_DB: 'db1' }),
     );
     await service.onModuleInit();
@@ -150,7 +159,7 @@ describe('MongoService', () => {
 
   it('pings the database', async () => {
     createClientMock();
-    const service = new MongoService(
+    const service = createService(
       createConfigService({ MONGODB_URI: 'mongodb://localhost:27017', MONGODB_DB: 'db1' }),
     );
     await service.onModuleInit();

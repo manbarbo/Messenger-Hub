@@ -5,9 +5,13 @@ import { AppointmentStatus } from '@domain/enums/appointment-status.enum';
 import { AppointmentCancelledEvent } from '@domain/events/appointment-cancelled.event';
 import { AppointmentNotFoundError, ValidationError } from '@domain/errors';
 import type { AppointmentRepository, SlotRepository } from '@domain/repositories';
-import type { EventPublisher } from '@domain/services';
+import type { EventPublisher, Logger } from '@domain/services';
 import { CancelAppointmentCommand } from './cancel-appointment.command';
 import { CancelAppointmentHandler } from './cancel-appointment.handler';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 function buildAppointment(status: AppointmentStatus = AppointmentStatus.CONFIRMED): Appointment {
   return {
@@ -37,6 +41,7 @@ describe('CancelAppointmentHandler', () => {
     slotRepository = { markAsAvailable: vi.fn() };
     eventPublisher = { publish: vi.fn() };
     handler = new CancelAppointmentHandler(
+      createMockLogger(),
       appointmentRepository as unknown as AppointmentRepository,
       slotRepository as unknown as SlotRepository,
       eventPublisher as EventPublisher,

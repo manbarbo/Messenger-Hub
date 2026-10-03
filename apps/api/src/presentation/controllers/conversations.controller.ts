@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Inject,
   NotFoundException,
   Param,
   Query,
@@ -11,6 +12,7 @@ import type { ConversationSummary, ConversationDetailResult } from '@application
 import { ListConversationsQuery } from '@application/queries/list-conversations/list-conversations.query';
 import { GetConversationDetailQuery } from '@application/queries/get-conversation-detail/get-conversation-detail.query';
 import { ConversationNotFoundError } from '@domain/errors';
+import { LOGGER, type Logger } from '@domain/services';
 import type { PaginatedResult } from '@domain/value-objects/pagination.vo';
 import {
   formatZodErrors,
@@ -31,7 +33,10 @@ export interface ConversationListResponse {
 
 @Controller('api/conversations')
 export class ConversationsController {
-  constructor(private readonly queryBus: QueryBus) {}
+  constructor(
+    private readonly queryBus: QueryBus,
+    @Inject(LOGGER) private readonly logger: Logger,
+  ) {}
 
   @Get()
   async list(@Query() query: Record<string, unknown>): Promise<ConversationListResponse> {
@@ -74,6 +79,10 @@ export class ConversationsController {
       )) as ConversationDetailResult;
     } catch (error) {
       if (error instanceof ConversationNotFoundError) {
+        this.logger.warn('Conversation not found', {
+          context: 'ConversationsController',
+          conversationId: id,
+        });
         throw new NotFoundException({
           error: 'ConversationNotFoundError',
           message: error.message,

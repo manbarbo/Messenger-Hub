@@ -52,6 +52,23 @@ Key fixes in Phase 8:
 
 ---
 
+## Phase 9 Completion Notes (2026-10-03)
+
+Phase 9 (Structured Logging) is **Completed**.
+
+| Task | Result |
+|------|--------|
+| T-9.1 Backend Logging System | `Logger` interface + `LOGGER` DI token, `WinstonLoggerService`, `LoggingInterceptor` with body sanitization, daily rotate file transport, `LoggerModule` (@Global) |
+| T-9.2 Frontend Logging & Error Tracking | `LoggerService` injectable, `GlobalErrorHandler`, runtime error listeners, API error logging, `ErrorBoundaryComponent` |
+| T-9.3 Add Structured Logging Across Application | 28 backend files + 5 frontend files instrumented; all `new Logger(...)` and `console.*` replaced with structured logging |
+
+Key outcomes:
+- **Backend:** All 397 tests pass, lint clean. Zero `new Logger(` or `console.*` in source. All state mutations, external calls (LLM, embedding, DB), queue operations, and error paths logged with structured metadata.
+- **Frontend:** All 73 tests pass, lint clean. Components log data loading, user actions, and errors via `LoggerService`.
+- **Structured logging is now mandatory** for all future implementations (AGENTS.md §18, Definition of Done §24).
+
+---
+
 ## Implementation Order
 
 ```text
@@ -99,6 +116,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 Phase 9: Logging (Day 3 — Evening)
   9.1 Backend Logging System
   9.2 Frontend Logging & Error Tracking
+  9.3 Add Structured Logging Across Application
 ```
 
 ---
@@ -134,6 +152,7 @@ Phase 9: Logging (Day 3 — Evening)
 | T-8.3 | Testing | Coverage Verification | Full Stack | Completed | 1 |
 | T-9.1 | Logging | Backend Logging System | Backend | Completed | 2–3 |
 | T-9.2 | Logging | Frontend Logging & Error Tracking | Frontend | Completed | 2–3 |
+| T-9.3 | Logging | Add Structured Logging Across Application | Full Stack | Completed | 4–6 |
 
 **Total estimated effort:** 46–66 hours (feasible in 2–3 days with AI assistance)
 
@@ -193,6 +212,7 @@ T-6.1 (Angular Foundation)
 
 T-9.1 (Backend Logging)
   └── T-9.2 (Frontend Logging) — optional: backend /api/logs endpoint depends on T-9.1 LOGGER
+  └── T-9.3 (Add Structured Logging) — depends on both T-9.1 and T-9.2
 ```
 
 ---
@@ -228,6 +248,7 @@ T-9.1 (Backend Logging)
 | T-8.3 | Coverage reports |
 | T-9.1 | `apps/api/src/domain/services/logger.interface.ts`, `apps/api/src/infrastructure/logging/`, `apps/api/src/presentation/interceptors/logging.interceptor.ts` |
 | T-9.2 | `apps/web/src/app/core/logger.service.ts`, `apps/web/src/app/core/global-error.handler.ts`, `apps/web/src/app/shared/components/error-boundary/` |
+| T-9.3 | 28 backend files (handlers, services, repositories, controllers) + 5 frontend files (components, api service) |
 
 ---
 

@@ -13,6 +13,7 @@ import { CommandBus } from '@nestjs/cqrs';
 import type { Response } from 'express';
 import { ProcessIncomingMessageCommand } from '@application/commands/process-incoming-message/process-incoming-message.command';
 import type { ProcessIncomingMessageResult } from '@application/commands/process-incoming-message/process-incoming-message.handler';
+import { LOGGER, type Logger } from '@domain/services';
 import {
   formatWebhookValidationErrors,
   WebhookMessageSchema,
@@ -28,6 +29,7 @@ export class WebhookController {
   constructor(
     private readonly commandBus: CommandBus,
     @Inject(ConfigService) private readonly configService: ConfigService,
+    @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
   @Post('messages')
@@ -67,10 +69,21 @@ export class WebhookController {
     )) as ProcessIncomingMessageResult;
 
     if (result.duplicate) {
+      this.logger.info('Duplicate message received', {
+        context: 'WebhookController',
+        messageId: parsed.data.message_id,
+        conversationId: result.conversationId,
+        duplicate: true,
+      });
       res.status(HttpStatus.OK);
       return { status: 'duplicate', conversationId: result.conversationId };
     }
 
+    this.logger.info('Message accepted', {
+      context: 'WebhookController',
+      messageId: parsed.data.message_id,
+      clinicId,
+    });
     res.status(HttpStatus.ACCEPTED);
     return { status: 'accepted', conversationId: result.conversationId };
   }

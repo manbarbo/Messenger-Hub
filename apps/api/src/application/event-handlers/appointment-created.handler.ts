@@ -1,15 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { AppointmentCreatedEvent } from '@domain/events/appointment-created.event';
+import { LOGGER, type Logger } from '@domain/services';
 
 @Injectable()
 export class AppointmentCreatedEventHandler {
-  private readonly logger = new Logger(AppointmentCreatedEventHandler.name);
+  constructor(@Inject(LOGGER) private readonly logger: Logger) {}
 
   @OnEvent('appointment.created')
   handle(event: AppointmentCreatedEvent): void {
-    this.logger.log(
-      `Appointment created id=${event.aggregateId} clinic=${event.clinicId} doctor=${event.doctorId} slot=${event.slotId} phone=${event.patientPhone}`,
-    );
+    this.logger.info('Appointment created event received', {
+      context: 'AppointmentCreatedEventHandler',
+      appointmentId: event.aggregateId,
+      clinicId: event.clinicId,
+      doctorId: event.doctorId,
+      slotId: event.slotId,
+    });
   }
 }

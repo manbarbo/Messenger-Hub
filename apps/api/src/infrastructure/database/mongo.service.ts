@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Collection, Db, MongoClient } from 'mongodb';
+import { LOGGER, type Logger } from '@domain/services';
 import { MONGO_INDEX_SPECS } from './mongo-indexes';
 
 export const MONGO_COLLECTIONS = {
@@ -11,31 +12,45 @@ export const MONGO_COLLECTIONS = {
 
 @Injectable()
 export class MongoService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(MongoService.name);
   private client?: MongoClient;
   private db?: Db;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
+    private readonly configService: ConfigService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
-    const uri = this.configService.get<string>('MONGODB_URI');
-    if (!uri) {
-      throw new Error('MONGODB_URI is not configured');
+    try {
+      const uri = this.configService.get<string>('MONGODB_URI');
+      if (!uri) {
+        throw new Error('MONGODB_URI is not configured');
+      }
+
+      const dbName =
+        this.configService.get<string>('MONGODB_DB') ?? this.resolveDbName(uri) ?? 'messenger_hub';
+
+      this.client = new MongoClient(uri, {
+        maxPoolSize: 10,
+        minPoolSize: 0,
+        serverSelectionTimeoutMS: 5000,
+      });
+
+      await this.client.connect();
+      this.db = this.client.db(dbName);
+      await this.createIndexes();
+      this.logger.info('MongoDB connected', {
+        context: 'MongoService',
+        dbName,
+        event: 'connected',
+      });
+    } catch (error) {
+      this.logger.error('MongoDB connection failed', {
+        context: 'MongoService',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
-
-    const dbName =
-      this.configService.get<string>('MONGODB_DB') ?? this.resolveDbName(uri) ?? 'messenger_hub';
-
-    this.client = new MongoClient(uri, {
-      maxPoolSize: 10,
-      minPoolSize: 0,
-      serverSelectionTimeoutMS: 5000,
-    });
-
-    await this.client.connect();
-    this.db = this.client.db(dbName);
-    await this.createIndexes();
-    this.logger.log(`MongoDB connected: ${dbName}`);
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -43,6 +58,10 @@ export class MongoService implements OnModuleInit, OnModuleDestroy {
       await this.client.close();
       this.client = undefined;
       this.db = undefined;
+      this.logger.info('MongoDB disconnected', {
+        context: 'MongoService',
+        event: 'disconnected',
+      });
     }
   }
 
@@ -77,7 +96,11 @@ export class MongoService implements OnModuleInit, OnModuleDestroy {
       const options = spec.options ?? {};
       await db.collection(spec.collection).createIndex(spec.key as Record<string, 1>, options);
     }
-    this.logger.log(`Ensured ${MONGO_INDEX_SPECS.length} MongoDB indexes`);
+    this.logger.info('MongoDB indexes ensured', {
+      context: 'MongoService',
+      indexCount: MONGO_INDEX_SPECS.length,
+      event: 'indexes_ensured',
+    });
   }
 
   private resolveDbName(uri: string): string | undefined {

@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { CommandBus } from '@nestjs/cqrs';
 import { ProcessIncomingMessageCommand } from '@application/commands/process-incoming-message/process-incoming-message.command';
 import type { ProcessIncomingMessageResult } from '@application/commands/process-incoming-message/process-incoming-message.handler';
+import { LOGGER, type Logger } from '@domain/services';
 import {
   formatZodErrors,
   SimulatorMessageSchema,
@@ -28,6 +29,7 @@ export class SimulatorController {
   constructor(
     private readonly commandBus: CommandBus,
     @Inject(ConfigService) private readonly configService: ConfigService,
+    @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
   @Post()
@@ -64,6 +66,12 @@ export class SimulatorController {
         clinicId,
       ),
     )) as ProcessIncomingMessageResult;
+
+    this.logger.info('Simulator message received', {
+      context: 'SimulatorController',
+      messageId,
+      clinicId,
+    });
 
     return {
       status: 'accepted',

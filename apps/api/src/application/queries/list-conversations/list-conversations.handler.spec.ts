@@ -36,14 +36,17 @@ function buildClinic(id: string, name: string): Clinic {
 describe('ListConversationsHandler', () => {
   let conversationRepository: { findAll: ReturnType<typeof vi.fn> };
   let clinicRepository: { findById: ReturnType<typeof vi.fn>; findByName: ReturnType<typeof vi.fn> };
+  let logger: { debug: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   let handler: ListConversationsHandler;
 
   beforeEach(() => {
     conversationRepository = { findAll: vi.fn() };
     clinicRepository = { findById: vi.fn(), findByName: vi.fn() };
+    logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     handler = new ListConversationsHandler(
       conversationRepository as unknown as ConversationRepository,
       clinicRepository as ClinicRepository,
+      logger as never,
     );
   });
 

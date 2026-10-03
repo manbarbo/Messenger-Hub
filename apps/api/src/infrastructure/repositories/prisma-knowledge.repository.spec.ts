@@ -3,8 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { KnowledgeDocument } from '@domain/entities/knowledge-document.entity';
 import { ValidationError } from '@domain/errors/validation.error';
 import type { EmbeddingService } from '@domain/services/embedding.service';
+import type { Logger } from '@domain/services';
 import { RAG_SIMILARITY_THRESHOLD } from '@domain/value-objects/knowledge-result.vo';
 import { PrismaKnowledgeRepository } from './prisma-knowledge.repository';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 const baseDocument: KnowledgeDocument = {
   id: 'doc-1',
@@ -39,7 +44,11 @@ describe('PrismaKnowledgeRepository', () => {
       $queryRaw: vi.fn(),
       $executeRaw: vi.fn(),
     };
-    repository = new PrismaKnowledgeRepository(prisma as never, embeddingService as EmbeddingService);
+    repository = new PrismaKnowledgeRepository(
+      createMockLogger(),
+      prisma as never,
+      embeddingService as EmbeddingService,
+    );
   });
 
   describe('search', () => {

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import type { AITrace, AITraceFinalStatus, AITraceToolCall } from '@domain/entities/ai-trace.entity';
 import type { Message } from '@domain/entities/message.entity';
@@ -20,7 +20,7 @@ import {
   type MessageRepository,
   type SlotRepository,
 } from '@domain/repositories';
-import { LLM_SERVICE, type LLMService } from '@domain/services';
+import { LLM_SERVICE, LOGGER, type LLMService, type Logger } from '@domain/services';
 import { CreateAppointmentCommand } from '../commands/create-appointment/create-appointment.command';
 import { parseColombiaDate } from './colombia-time';
 import { PromptBuilder } from './prompt-builder';
@@ -83,9 +83,8 @@ function assistantMessageFromToolCalls(toolCalls: LLMToolCall[]): LLMMessage {
 
 @Injectable()
 export class AIOrchestratorService {
-  private readonly logger = new Logger(AIOrchestratorService.name);
-
   constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
     @Inject(LLM_SERVICE) private readonly llmService: LLMService,
     @Inject(CLINIC_REPOSITORY) private readonly clinicRepository: ClinicRepository,
     @Inject(MESSAGE_REPOSITORY) private readonly messageRepository: MessageRepository,
@@ -111,11 +110,24 @@ export class AIOrchestratorService {
       userMessage,
     );
 
+    this.logger.info('Turn started', {
+      context: 'AIOrchestrator',
+      conversationId,
+      clinicId,
+      historyLength: history.length,
+    });
+
     let toolsCalled: AITraceToolCall[] = [];
     let usage = createEmptyUsage();
 
     try {
       for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+        this.logger.debug('LLM iteration started', {
+          context: 'AIOrchestrator',
+          conversationId,
+          iteration,
+        });
+
         const result = await this.llmService.chat({
           messages,
           tools: [...TOOL_DEFINITIONS],
@@ -124,15 +136,17 @@ export class AIOrchestratorService {
 
         if (result.toolCalls.length === 0) {
           const response = result.content ?? 'No tengo esa información.';
+          const finalStatus = ConversationStatus.RESOLVED_BY_AI;
           await this.saveTrace({
             conversationId,
             clinicId,
             turnIndex: history.length,
             usage,
             toolsCalled,
-            finalStatus: ConversationStatus.RESOLVED_BY_AI,
+            finalStatus,
           });
-          return { response, status: ConversationStatus.RESOLVED_BY_AI };
+          this.logTurnCompleted(conversationId, finalStatus, usage);
+          return { response, status: finalStatus };
         }
 
         for (const toolCall of result.toolCalls) {
@@ -140,6 +154,8 @@ export class AIOrchestratorService {
             toolCall,
             messages,
             clinicId,
+            conversationId,
+            iteration,
           );
           toolsCalled = [...toolsCalled, outcome.traceEntry];
 
@@ -152,10 +168,17 @@ export class AIOrchestratorService {
               toolsCalled,
               finalStatus: outcome.status,
             });
+            this.logTurnCompleted(conversationId, outcome.status, usage);
             return { response: outcome.response, status: outcome.status };
           }
         }
       }
+
+      this.logger.warn('Tool iteration limit reached', {
+        context: 'AIOrchestrator',
+        conversationId,
+        maxIterations: MAX_TOOL_ITERATIONS,
+      });
 
       await this.forceEscalate(
         conversationId,
@@ -165,13 +188,18 @@ export class AIOrchestratorService {
         toolsCalled,
         'Límite de iteraciones alcanzado',
       );
+      this.logTurnCompleted(conversationId, ConversationStatus.ESCALATED, usage);
       return {
         response: 'No pude resolver tu consulta. Te transfiero a un agente.',
         status: ConversationStatus.ESCALATED,
       };
     } catch (error) {
       if (error instanceof LLMProviderError) {
-        this.logger.warn(`LLM provider failed during turn: ${error.message}`);
+        this.logger.warn('LLM provider failed during turn', {
+          context: 'AIOrchestrator',
+          conversationId,
+          error: error.message,
+        });
         await this.forceEscalate(
           conversationId,
           clinicId,
@@ -180,6 +208,7 @@ export class AIOrchestratorService {
           toolsCalled,
           `Fallo del proveedor LLM: ${error.message}`,
         );
+        this.logTurnCompleted(conversationId, ConversationStatus.ESCALATED, usage);
         return {
           response: 'No pude procesar tu mensaje ahora. Te transfiero a un agente humano.',
           status: ConversationStatus.ESCALATED,
@@ -187,6 +216,21 @@ export class AIOrchestratorService {
       }
       throw error;
     }
+  }
+
+  private logTurnCompleted(
+    conversationId: string,
+    finalStatus: ConversationStatus,
+    usage: TurnUsage,
+  ): void {
+    this.logger.info('Turn completed', {
+      context: 'AIOrchestrator',
+      conversationId,
+      finalStatus,
+      totalTokens: usage.inputTokens + usage.outputTokens,
+      totalCostUsd: usage.costUsd,
+      latencyMs: usage.latencyMs,
+    });
   }
 
   /**
@@ -210,17 +254,32 @@ export class AIOrchestratorService {
     toolCall: LLMToolCall,
     messages: LLMMessage[],
     clinicId: string,
+    conversationId: string,
+    iteration: number,
   ): Promise<{
     traceEntry: AITraceToolCall;
     terminal: boolean;
     response: string;
     status: ConversationStatus;
   }> {
+    this.logger.info('Tool call received', {
+      context: 'AIOrchestrator',
+      conversationId,
+      toolName: toolCall.name,
+      iteration,
+    });
+
     const validation = await this.toolValidator.validate(toolCall.name, toolCall.arguments, {
       clinicId,
     });
 
     if (!validation.valid) {
+      this.logger.warn('Tool validation failed', {
+        context: 'AIOrchestrator',
+        conversationId,
+        toolName: toolCall.name,
+        validationError: validation.error,
+      });
       this.appendToolExchange(messages, toolCall, validation.error);
       return {
         traceEntry: {
@@ -237,6 +296,11 @@ export class AIOrchestratorService {
 
     try {
       const toolResult = await this.executeTool(toolCall.name, validation.parsed, clinicId);
+      this.logger.debug('Tool executed successfully', {
+        context: 'AIOrchestrator',
+        conversationId,
+        toolName: toolCall.name,
+      });
       this.appendToolExchange(messages, toolCall, JSON.stringify(toolResult));
 
       if (toolCall.name === 'agendar_cita') {
@@ -279,6 +343,13 @@ export class AIOrchestratorService {
         status: ConversationStatus.ACTIVE,
       };
     } catch (error) {
+      this.logger.warn('Tool execution failed', {
+        context: 'AIOrchestrator',
+        conversationId,
+        toolName: toolCall.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
       const errorMessage =
         error instanceof SlotAlreadyBookedError
           ? `El horario ya fue reservado. ${error.message}. Consulta otros horarios.`
@@ -377,6 +448,10 @@ export class AIOrchestratorService {
         return { escalated: true, reason: String(args.motivo ?? '') };
 
       default:
+        this.logger.error('Unknown tool executed', {
+          context: 'AIOrchestrator',
+          toolName: name,
+        });
         throw new Error(`Unknown tool: ${name}`);
     }
   }
@@ -389,10 +464,21 @@ export class AIOrchestratorService {
     toolsCalled: AITraceToolCall[],
     reason: string,
   ): Promise<void> {
+    this.logger.warn('Conversation escalated', {
+      context: 'AIOrchestrator',
+      conversationId,
+      reason,
+      finalStatus: 'escalada',
+    });
+
     try {
       await this.executeTool('escalar_a_humano', { motivo: reason }, clinicId);
     } catch (error) {
-      this.logger.warn(`Force escalation side-effect failed: ${String(error)}`);
+      this.logger.warn('Force escalation side-effect failed', {
+        context: 'AIOrchestrator',
+        conversationId,
+        error: String(error),
+      });
     }
 
     await this.saveTrace({
@@ -437,5 +523,12 @@ export class AIOrchestratorService {
     };
 
     await this.aiTraceRepository.create(trace);
+
+    this.logger.debug('AI trace saved', {
+      context: 'AIOrchestrator',
+      conversationId: trace.conversationId,
+      traceId: trace.id,
+      finalStatus: trace.finalStatus,
+    });
   }
 }

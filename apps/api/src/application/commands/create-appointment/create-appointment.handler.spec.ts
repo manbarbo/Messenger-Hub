@@ -11,9 +11,13 @@ import {
   ValidationError,
 } from '@domain/errors';
 import type { AppointmentRepository, SlotRepository } from '@domain/repositories';
-import type { EventPublisher } from '@domain/services';
+import type { EventPublisher, Logger } from '@domain/services';
 import { CreateAppointmentCommand } from './create-appointment.command';
 import { CreateAppointmentHandler } from './create-appointment.handler';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
@@ -48,6 +52,7 @@ describe('CreateAppointmentHandler', () => {
   let slotRepository: { findById: ReturnType<typeof vi.fn> };
   let appointmentRepository: { create: ReturnType<typeof vi.fn> };
   let eventPublisher: { publish: ReturnType<typeof vi.fn> };
+  let logger: Logger;
   let handler: CreateAppointmentHandler;
   let command: CreateAppointmentCommand;
 
@@ -55,7 +60,9 @@ describe('CreateAppointmentHandler', () => {
     slotRepository = { findById: vi.fn() };
     appointmentRepository = { create: vi.fn() };
     eventPublisher = { publish: vi.fn() };
+    logger = createMockLogger();
     handler = new CreateAppointmentHandler(
+      logger,
       slotRepository as unknown as SlotRepository,
       appointmentRepository as unknown as AppointmentRepository,
       eventPublisher as EventPublisher,

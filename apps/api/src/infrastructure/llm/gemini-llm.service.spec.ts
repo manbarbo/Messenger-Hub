@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
+import type { Logger } from '@domain/services';
 import type { LLMChatParams } from '@domain/value-objects/llm-chat.vo';
 import { LLMProviderError } from '@domain/errors/llm-provider.error';
 import { GeminiLLMService } from './gemini-llm.service';
@@ -22,6 +23,10 @@ vi.mock('openai', () => ({
   },
 }));
 
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
+
 function createConfigService(overrides: Record<string, string> = {}): ConfigService {
   const values: Record<string, string> = {
     LLM_API_KEY: 'test-key',
@@ -37,7 +42,7 @@ function createConfigService(overrides: Record<string, string> = {}): ConfigServ
 }
 
 function createService(config: ConfigService = createConfigService()): GeminiLLMService {
-  return new GeminiLLMService(config);
+  return new GeminiLLMService(createMockLogger(), config);
 }
 
 function chatParams(overrides: Partial<LLMChatParams> = {}): LLMChatParams {

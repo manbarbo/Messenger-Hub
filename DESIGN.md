@@ -4,7 +4,7 @@
 
 This document defines the data model, API contracts, AI pipeline, and frontend views for the MessengerHub AI clinic assistant.
 
-> **Implementation status (2026-10-02):** Phases 1–8 are implemented (domain, persistence, CQRS, LLM/RAG/orchestration, async processing, API layer, frontend dashboard, seed data, testing). Phase 9 (Logging) is planned. Sections describing logging infrastructure are the **target design** for Phase 9. Where implementation details differ from an earlier draft of this document, the code is authoritative.
+> **Implementation status (2026-10-03):** All phases 1–9 are implemented (domain, persistence, CQRS, LLM/RAG/orchestration, async processing, API layer, frontend dashboard, seed data, testing, structured logging). Sections describing AWS production deployment are the **target design** for future work. Where implementation details differ from an earlier draft of this document, the code is authoritative.
 
 ---
 
@@ -989,7 +989,7 @@ LLM costs are separate and depend on the provider. At ~$0.0003 per conversation 
 
 # 10. Logging Architecture
 
-> **Status:** Planned (Phase 9 — T-9.1 backend, T-9.2 frontend)
+> **Status:** Implemented (T-9.1 backend, T-9.2 frontend, T-9.3 application-wide)
 
 ## Backend Logging
 

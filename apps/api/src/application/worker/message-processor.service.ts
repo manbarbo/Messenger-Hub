@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AIOrchestratorService } from '../llm/ai-orchestrator.service';
 import type { QueueJob } from '@domain/value-objects/queue-job.vo';
 import type { ConversationRepository, MessageRepository } from '@domain/repositories';
 import { CONVERSATION_REPOSITORY, MESSAGE_REPOSITORY } from '@domain/repositories';
+import { LOGGER, type Logger } from '@domain/services';
 
 export const MESSAGE_PROCESSOR_SERVICE = Symbol('MessageProcessorService');
 
@@ -13,9 +14,8 @@ export function buildAssistantMessageId(inboundMessageId: string): string {
 
 @Injectable()
 export class MessageProcessorService {
-  private readonly logger = new Logger(MessageProcessorService.name);
-
   constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
     private readonly aiOrchestrator: AIOrchestratorService,
     @Inject(MESSAGE_REPOSITORY) private readonly messageRepository: MessageRepository,
     @Inject(CONVERSATION_REPOSITORY)
@@ -25,14 +25,31 @@ export class MessageProcessorService {
   async process(job: QueueJob): Promise<void> {
     const assistantMessageId = buildAssistantMessageId(job.messageId);
 
+    this.logger.info('Processing incoming message', {
+      context: 'MessageProcessor',
+      messageId: job.messageId,
+      conversationId: job.conversationId,
+      clinicId: job.clinicId,
+    });
+
     const existing = await this.messageRepository.findByMessageId(assistantMessageId);
     if (existing) {
-      this.logger.log(`Skipping already-processed message ${job.messageId}`);
+      this.logger.debug('Message already processed', {
+        context: 'MessageProcessor',
+        messageId: job.messageId,
+        conversationId: job.conversationId,
+        duplicate: true,
+      });
       return;
     }
 
     const conversation = await this.conversationRepository.findById(job.conversationId);
     if (!conversation) {
+      this.logger.error('Conversation not found', {
+        context: 'MessageProcessor',
+        conversationId: job.conversationId,
+        reason: 'conversation_not_found',
+      });
       throw new Error(`Conversation not found: ${job.conversationId}`);
     }
 
@@ -41,6 +58,13 @@ export class MessageProcessorService {
       job.clinicId,
       job.text,
     );
+
+    this.logger.info('Orchestrator turn completed', {
+      context: 'MessageProcessor',
+      conversationId: job.conversationId,
+      finalStatus: result.status,
+      responseLength: result.response.length,
+    });
 
     await this.messageRepository.create({
       id: randomUUID(),
@@ -54,5 +78,11 @@ export class MessageProcessorService {
     });
 
     await this.conversationRepository.updateStatus(job.conversationId, result.status);
+
+    this.logger.debug('Conversation status updated', {
+      context: 'MessageProcessor',
+      conversationId: job.conversationId,
+      newStatus: result.status,
+    });
   }
 }

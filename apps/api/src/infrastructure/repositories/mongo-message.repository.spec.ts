@@ -1,8 +1,13 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from '@domain/entities/message.entity';
+import type { Logger } from '@domain/services';
 import { MONGO_COLLECTIONS } from '../database/mongo.service';
 import { MongoMessageRepository } from './mongo-message.repository';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 const baseMessage: Message = {
   id: 'msg-1',
@@ -50,7 +55,7 @@ describe('MongoMessageRepository', () => {
       findOne: vi.fn(),
     };
     mongo = { getCollection: vi.fn().mockReturnValue(collection) };
-    repository = new MongoMessageRepository(mongo as never);
+    repository = new MongoMessageRepository(createMockLogger(), mongo as never);
   });
 
   it('uses the messages collection', () => {

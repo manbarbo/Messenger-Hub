@@ -8,6 +8,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { isAppApiError } from '../core/app-api.error';
+import { LoggerService } from '../core/logger.service';
 import type { SimulatorResponse } from '../core/models/api.model';
 
 interface FormErrors {
@@ -35,6 +36,7 @@ export class SimulatorComponent {
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly logger = inject(LoggerService);
 
   readonly phone = signal('');
   readonly message = signal('');
@@ -68,12 +70,20 @@ export class SimulatorComponent {
     this.errors.set(nextErrors);
 
     if (nextErrors.phone || nextErrors.text) {
+      this.logger.warn('Simulator form validation failed', 'Simulator', {
+        errors: nextErrors,
+      });
       return;
     }
 
     this.loading.set(true);
     this.errorMessage.set(null);
     this.result.set(null);
+
+    this.logger.info('Sending simulator message', 'Simulator', {
+      phone,
+      clinicId,
+    });
 
     this.api
       .sendSimulatorMessage({
@@ -88,6 +98,10 @@ export class SimulatorComponent {
           this.message.set('');
           this.loading.set(false);
           this.snackBar.open('Message sent to the assistant', 'OK', { duration: 4000 });
+          this.logger.info('Simulator message sent successfully', 'Simulator', {
+            messageId: response.messageId,
+            conversationId: response.conversationId,
+          });
         },
         error: (err: unknown) => {
           const message =
@@ -95,6 +109,9 @@ export class SimulatorComponent {
           this.errorMessage.set(message);
           this.loading.set(false);
           this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+          this.logger.error('Failed to send simulator message', 'Simulator', {
+            message: err instanceof Error ? err.message : String(err),
+          });
         },
       });
   }

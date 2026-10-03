@@ -3,7 +3,7 @@ import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ConfigService } from '@nestjs/config';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   AI_TRACE_REPOSITORY,
   APPOINTMENT_REPOSITORY,
@@ -16,6 +16,7 @@ import {
   QUEUE_SERVICE,
   SLOT_REPOSITORY,
 } from '@domain/index';
+import { LOGGER } from '@domain/services';
 import {
   ApplicationModule,
   COMMAND_HANDLERS,
@@ -47,10 +48,13 @@ const mockConfigService = {
   },
 };
 
+const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
 @Global()
 @Module({
   providers: [
     { provide: ConfigService, useValue: mockConfigService },
+    { provide: LOGGER, useValue: mockLogger },
     { provide: SLOT_REPOSITORY, useValue: { findById: noop, findAvailable: noop } },
     {
       provide: APPOINTMENT_REPOSITORY,
@@ -73,6 +77,7 @@ const mockConfigService = {
   ],
   exports: [
     ConfigService,
+    LOGGER,
     SLOT_REPOSITORY,
     APPOINTMENT_REPOSITORY,
     CONVERSATION_REPOSITORY,

@@ -4,9 +4,13 @@ import type { Conversation } from '@domain/entities/conversation.entity';
 import type { Message } from '@domain/entities/message.entity';
 import { ConversationStatus } from '@domain/enums/conversation-status.enum';
 import type { ConversationRepository, MessageRepository } from '@domain/repositories';
-import type { QueueService } from '@domain/services';
+import type { Logger, QueueService } from '@domain/services';
 import { ProcessIncomingMessageCommand } from './process-incoming-message.command';
 import { ProcessIncomingMessageHandler } from './process-incoming-message.handler';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 const command = new ProcessIncomingMessageCommand(
   'wamid.001',
@@ -45,6 +49,7 @@ describe('ProcessIncomingMessageHandler', () => {
     messageRepository = { findByMessageId: vi.fn(), create: vi.fn() };
     queueService = { push: vi.fn() };
     handler = new ProcessIncomingMessageHandler(
+      createMockLogger(),
       conversationRepository as unknown as ConversationRepository,
       messageRepository as unknown as MessageRepository,
       queueService as QueueService,

@@ -51,6 +51,7 @@ describe('MongoAITraceRepository', () => {
     toArray: ReturnType<typeof vi.fn>;
   };
   let mongo: { getCollection: ReturnType<typeof vi.fn> };
+  let logger: { debug: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   let repository: MongoAITraceRepository;
 
   beforeEach(() => {
@@ -63,7 +64,8 @@ describe('MongoAITraceRepository', () => {
       find: vi.fn().mockReturnValue(findCursor),
     };
     mongo = { getCollection: vi.fn().mockReturnValue(collection) };
-    repository = new MongoAITraceRepository(mongo as never);
+    logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    repository = new MongoAITraceRepository(mongo as never, logger as never);
   });
 
   it('uses the ai_traces collection', () => {

@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { LoggerService } from './logger.service';
 import type { ConversationDetail, ConversationSummary } from './models/conversation.model';
 import type {
   ListConversationsParams,
@@ -13,11 +14,19 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
+  private readonly logger = inject(LoggerService);
   private readonly baseUrl = environment.apiUrl;
 
   listConversations(
     params: ListConversationsParams = {},
   ): Observable<ListConversationsResponse<ConversationSummary>> {
+    this.logger.debug('Listing conversations', 'ApiService', {
+      status: params.status,
+      clinicId: params.clinicId,
+      page: params.page,
+      limit: params.limit,
+    });
+
     let httpParams = new HttpParams();
 
     if (params.status !== undefined) {
@@ -40,10 +49,15 @@ export class ApiService {
   }
 
   getConversation(id: string): Observable<ConversationDetail> {
+    this.logger.debug('Fetching conversation detail', 'ApiService', { id });
     return this.http.get<ConversationDetail>(`${this.baseUrl}/api/conversations/${id}`);
   }
 
   sendSimulatorMessage(body: SimulatorRequest): Observable<SimulatorResponse> {
+    this.logger.info('Sending simulator message', 'ApiService', {
+      from: body.from,
+      clinicId: body.clinicId,
+    });
     return this.http.post<SimulatorResponse>(`${this.baseUrl}/api/simulator`, body);
   }
 }

@@ -4,7 +4,12 @@ import { AppointmentStatus } from '@domain/enums/appointment-status.enum';
 import { SlotAlreadyBookedError } from '@domain/errors/slot-already-booked.error';
 import { SlotNotFoundError } from '@domain/errors/slot-not-found.error';
 import type { Appointment } from '@domain/entities/appointment.entity';
+import type { Logger } from '@domain/services';
 import { PrismaAppointmentRepository } from './prisma-appointment.repository';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 const baseAppointment: Appointment = {
   id: 'apt-1',
@@ -46,7 +51,7 @@ describe('PrismaAppointmentRepository', () => {
         update: vi.fn(),
       },
     };
-    repository = new PrismaAppointmentRepository(prisma as never);
+    repository = new PrismaAppointmentRepository(createMockLogger(), prisma as never);
   });
 
   describe('create', () => {

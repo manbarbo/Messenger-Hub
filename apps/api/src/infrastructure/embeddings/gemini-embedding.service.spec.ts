@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
+import type { Logger } from '@domain/services';
 import { LLMProviderError } from '@domain/errors/llm-provider.error';
 import { ValidationError } from '@domain/errors/validation.error';
 import { GeminiEmbeddingService } from './gemini-embedding.service';
@@ -22,6 +23,10 @@ vi.mock('openai', () => ({
   },
 }));
 
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
+
 function createConfigService(overrides: Record<string, string> = {}): ConfigService {
   const values: Record<string, string> = {
     LLM_API_KEY: 'test-key',
@@ -41,6 +46,10 @@ function createVector(length = 768, fill = 0.01): number[] {
   return Array.from({ length }, () => fill);
 }
 
+function createService(config: ConfigService = createConfigService()): GeminiEmbeddingService {
+  return new GeminiEmbeddingService(createMockLogger(), config);
+}
+
 describe('GeminiEmbeddingService', () => {
   beforeEach(() => {
     createMock.mockReset();
@@ -48,7 +57,7 @@ describe('GeminiEmbeddingService', () => {
   });
 
   it('configures OpenAI client from LLM env vars', () => {
-    new GeminiEmbeddingService(createConfigService());
+    createService(createConfigService());
 
     expect(embeddingsConstructor).toHaveBeenCalledWith({
       apiKey: 'test-key',
@@ -60,7 +69,7 @@ describe('GeminiEmbeddingService', () => {
     const vector = createVector();
     createMock.mockResolvedValue({ data: [{ embedding: vector }] });
 
-    const service = new GeminiEmbeddingService(createConfigService());
+    const service = createService();
     const result = await service.embed('¿A qué hora atienden?');
 
     expect(createMock).toHaveBeenCalledWith({
@@ -75,7 +84,7 @@ describe('GeminiEmbeddingService', () => {
   it('trims input text before embedding', async () => {
     createMock.mockResolvedValue({ data: [{ embedding: createVector() }] });
 
-    const service = new GeminiEmbeddingService(createConfigService());
+    const service = createService();
     await service.embed('  horario de atencion  ');
 
     expect(createMock).toHaveBeenCalledWith({
@@ -89,7 +98,7 @@ describe('GeminiEmbeddingService', () => {
     const vector = createVector(1536, 0.02);
     createMock.mockResolvedValue({ data: [{ embedding: vector }] });
 
-    const service = new GeminiEmbeddingService(
+    const service = createService(
       createConfigService({
         EMBEDDING_MODEL: 'gemini-embedding-2',
         EMBEDDING_DIMENSIONS: '1536',
@@ -106,7 +115,7 @@ describe('GeminiEmbeddingService', () => {
   });
 
   it('throws ValidationError for empty or whitespace-only text', async () => {
-    const service = new GeminiEmbeddingService(createConfigService());
+    const service = createService();
 
     await expect(service.embed('')).rejects.toBeInstanceOf(ValidationError);
     await expect(service.embed('   ')).rejects.toBeInstanceOf(ValidationError);
@@ -115,7 +124,7 @@ describe('GeminiEmbeddingService', () => {
 
   it('throws LLMProviderError when the provider fails', async () => {
     createMock.mockRejectedValue(new Error('Rate limit exceeded'));
-    const service = new GeminiEmbeddingService(createConfigService());
+    const service = createService();
 
     await expect(service.embed('consulta')).rejects.toMatchObject({
       name: 'LLMProviderError',
@@ -125,14 +134,14 @@ describe('GeminiEmbeddingService', () => {
 
   it('throws LLMProviderError when the provider returns an empty vector', async () => {
     createMock.mockResolvedValue({ data: [{ embedding: [] }] });
-    const service = new GeminiEmbeddingService(createConfigService());
+    const service = createService();
 
     await expect(service.embed('consulta')).rejects.toBeInstanceOf(LLMProviderError);
   });
 
   it('throws ValidationError on dimension mismatch', async () => {
     createMock.mockResolvedValue({ data: [{ embedding: createVector(10) }] });
-    const service = new GeminiEmbeddingService(createConfigService());
+    const service = createService();
 
     await expect(service.embed('consulta')).rejects.toBeInstanceOf(ValidationError);
   });
@@ -141,7 +150,7 @@ describe('GeminiEmbeddingService', () => {
     const vector = createVector();
     createMock.mockResolvedValue({ data: [{ embedding: vector }] });
 
-    const service = new GeminiEmbeddingService(
+    const service = createService(
       createConfigService({
         EMBEDDING_MODEL: undefined,
         EMBEDDING_DIMENSIONS: undefined,
@@ -160,7 +169,7 @@ describe('GeminiEmbeddingService', () => {
     const vector = createVector();
     createMock.mockResolvedValue({ data: [{ embedding: vector }] });
 
-    const service = new GeminiEmbeddingService(
+    const service = createService(
       createConfigService({ EMBEDDING_DIMENSIONS: 'not-a-number' }),
     );
     await service.embed('consulta');
@@ -172,7 +181,7 @@ describe('GeminiEmbeddingService', () => {
 
   it('wraps non-Error provider failures as LLMProviderError', async () => {
     createMock.mockRejectedValue('provider string failure');
-    const service = new GeminiEmbeddingService(createConfigService());
+    const service = createService();
 
     await expect(service.embed('consulta')).rejects.toMatchObject({
       name: 'LLMProviderError',

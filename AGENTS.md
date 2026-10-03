@@ -39,8 +39,9 @@ The implementation must preserve the following architectural characteristics:
 - Adapter Pattern
 - Strategy Pattern
 - Factory Pattern
-- Dependency Injection
+- Dependency Inversion
 - Event-Driven Architecture
+- Structured Logging
 
 These requirements are architectural constraints.
 
@@ -644,7 +645,137 @@ Backend responsibilities:
 
 ---
 
-# 18. Testing
+# 18. Structured Logging (Mandatory)
+
+**Every new service, handler, controller, repository, and infrastructure adapter MUST include structured logging.** This is a non-negotiable requirement for all future implementations.
+
+## Backend Logging
+
+The backend uses a `Logger` interface (domain layer) with a `LOGGER` DI token, implemented by `WinstonLoggerService` (infrastructure layer).
+
+### Injection pattern
+
+```typescript
+import { LOGGER, type Logger } from '@domain/services';
+
+@Injectable()
+export class MyService {
+  constructor(@Inject(LOGGER) private readonly logger: Logger) {}
+}
+```
+
+### Method signatures
+
+```typescript
+logger.debug(message: string, metadata?: LogMetadata): void;
+logger.info(message: string, metadata?: LogMetadata): void;
+logger.warn(message: string, metadata?: LogMetadata): void;
+logger.error(message: string, metadata?: LogMetadata): void;
+```
+
+### What to log (by operation type)
+
+| Operation type | Level | Required metadata |
+|---------------|-------|-------------------|
+| State mutation success (create, update, cancel) | `info` | entity IDs, clinicId, resulting status |
+| State mutation rejected (domain error) | `warn` | entity ID, reason, relevant field |
+| External API call (LLM, embedding) | `debug` (request), `info` (response) | model, tokens, latency, costUsd |
+| External API call failure | `error` | model, error message |
+| Database connection lifecycle | `info` | event: connected/disconnected |
+| Queue job lifecycle | `info` (start/complete), `warn` (retry), `error` (DLQ) | jobId, attempt, conversationId |
+| RAG search | `debug` (start), `info` (results) | clinicId, resultCount, topSimilarity |
+| Validation failure (Zod/domain) | `warn` | toolName/field, reason |
+| Event published | `debug` | eventName, aggregateId |
+| Query result (read-only) | `debug` | total count, filters |
+
+### What NOT to log
+
+- Patient phone numbers (PII)
+- Patient message content (PII)
+- API keys, tokens, passwords, secrets (use the sanitizer in `LoggingInterceptor` for HTTP bodies)
+- Raw infrastructure errors exposed to clients (log server-side only)
+
+### Context string convention
+
+Every log call must include a `context` key identifying the source:
+
+```typescript
+this.logger.info('Appointment created', {
+  context: 'CreateAppointmentHandler',
+  appointmentId,
+  clinicId,
+  doctorId,
+  slotId,
+});
+```
+
+### NestJS Logger migration
+
+Do NOT use `new Logger(SomeClass.name)` from `@nestjs/common`. Always use the injected `LOGGER` token. The NestJS `Logger` uses a different signature (`.log(message, stack)`) and does not produce structured JSON output.
+
+## Frontend Logging
+
+The frontend uses `LoggerService` (injectable, `providedIn: 'root'`).
+
+### Injection pattern
+
+```typescript
+import { LoggerService } from '../core/logger.service';
+
+export class MyComponent {
+  private readonly logger = inject(LoggerService);
+}
+```
+
+### Method signatures
+
+```typescript
+logger.debug(message: string, context?: string, data?: unknown): void;
+logger.info(message: string, context?: string, data?: unknown): void;
+logger.warn(message: string, context?: string, data?: unknown): void;
+logger.error(message: string, context?: string, data?: unknown): void;
+```
+
+### What to log (by operation type)
+
+| Operation type | Level | Context |
+|---------------|-------|---------|
+| Data loading success | `debug` | component name |
+| Data loading failure | `error` | component name + error message |
+| User action (filter, navigation) | `info` | component name |
+| Form validation failure | `warn` | component name |
+| API request (optional tracing) | `debug` | `ApiService` |
+
+### What NOT to log (frontend)
+
+- Patient message content
+- Patient phone numbers
+- Full request/response bodies (the `error.interceptor.ts` already logs API failures)
+
+## Logging in Tests
+
+When writing tests for services/handlers that inject `LOGGER`:
+
+```typescript
+const mockLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+};
+
+// In NestJS test module:
+{ provide: LOGGER, useValue: mockLogger }
+
+// In direct constructor tests:
+new MyService(mockRepository, mockLogger)
+```
+
+Assert on logger calls when the log output is part of the behavior under test (e.g., error paths must log a warning).
+
+---
+
+# 19. Testing
 
 **Minimum coverage: 75%** across all metrics (branches, functions, lines, statements).
 
@@ -665,6 +796,8 @@ Write tests **alongside implementation**, not as a separate phase. Each task sho
 | T-6.2 (Conversation Inbox) | Component tests: renders list, loading/error/empty states, filter, pagination |
 | T-6.3 (Conversation Detail) | Component tests: messages timeline, AI traces expand/collapse |
 | T-6.4 (Simulator) | Component tests: form validation, send message, success/error states |
+| T-9.1 (Backend Logging) | Logger/formatter/interceptor/module tests |
+| T-9.2 (Frontend Logging) | LoggerService, GlobalErrorHandler, ErrorBoundaryComponent tests |
 
 This prevents testing debt and ensures coverage grows incrementally.
 
@@ -714,7 +847,7 @@ apps/web/src/app/conversations/conversation-list.component.spec.ts
 
 ---
 
-# 19. Error Handling
+# 20. Error Handling
 
 Use explicit errors.
 
@@ -735,9 +868,11 @@ Do not leak infrastructure-specific errors directly to API clients.
 
 LLM-specific errors (timeout, rate limit, invalid response) must be caught and handled gracefully — the patient should never see a raw LLM error.
 
+All error paths must be logged with `logger.error()` or `logger.warn()` using structured metadata (context, entity IDs, reason). See section 18.
+
 ---
 
-# 20. Code Quality
+# 21. Code Quality
 
 Prefer:
 
@@ -761,7 +896,7 @@ Avoid:
 
 ---
 
-# 21. Avoid Overengineering
+# 22. Avoid Overengineering
 
 The architecture must remain understandable.
 
@@ -780,7 +915,7 @@ unless explicitly requested.
 
 ---
 
-# 22. Architectural Decision Rule
+# 23. Architectural Decision Rule
 
 When choosing between two implementations:
 
@@ -794,7 +929,7 @@ When choosing between two implementations:
 
 ---
 
-# 23. Definition of Done
+# 24. Definition of Done
 
 A feature is complete when:
 
@@ -808,10 +943,13 @@ A feature is complete when:
 - No secrets are committed.
 - Existing tests pass.
 - Documentation is updated when architecture changes.
+- **Structured logging is included** (see section 18): all state mutations, external calls, error paths, and lifecycle events are logged with `LOGGER`/`LoggerService`.
+- **No raw `console.*` or `new Logger(...)` calls** remain in source code.
+- **No PII in logs** (patient phone, message content).
 
 ---
 
-# 24. Priority Order
+# 25. Priority Order
 
 When requirements conflict, use this priority:
 
@@ -829,7 +967,7 @@ Do not sacrifice architectural boundaries merely to reduce the amount of code.
 
 ---
 
-# 25. Final Principle
+# 26. Final Principle
 
 The system should remain:
 
@@ -849,7 +987,7 @@ The purpose of the architecture is to make future changes easier without introdu
 
 ---
 
-# 26. Skills
+# 27. Skills
 
 The following skills are installed and must be loaded when relevant:
 
@@ -867,7 +1005,7 @@ Use the skill tool to load a skill when a task matches its description.
 
 ---
 
-# 27. Agent Delegation
+# 28. Agent Delegation
 
 Agents are defined in `.opencode/opencode.json`. Use the `task` tool to delegate work to the correct agent:
 

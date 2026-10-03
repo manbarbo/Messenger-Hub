@@ -5,7 +5,12 @@ import type { Slot } from '@domain/entities/slot.entity';
 import type { ClinicRepository } from '@domain/repositories/clinic.repository';
 import type { DoctorRepository } from '@domain/repositories/doctor.repository';
 import type { SlotRepository } from '@domain/repositories/slot.repository';
+import type { Logger } from '@domain/services';
 import { ToolValidator } from './tool-validator';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 const clinic: Clinic = {
   id: 'clinic-1',
@@ -34,6 +39,7 @@ describe('ToolValidator', () => {
   let clinicRepository: { findByName: ReturnType<typeof vi.fn> };
   let doctorRepository: { existsByClinicAndSpecialty: ReturnType<typeof vi.fn> };
   let slotRepository: { findAvailable: ReturnType<typeof vi.fn> };
+  let logger: Logger;
   let validator: ToolValidator;
   const context = { clinicId: 'clinic-1', now: new Date('2026-10-02T12:00:00Z') };
 
@@ -41,7 +47,9 @@ describe('ToolValidator', () => {
     clinicRepository = { findByName: vi.fn() };
     doctorRepository = { existsByClinicAndSpecialty: vi.fn() };
     slotRepository = { findAvailable: vi.fn() };
+    logger = createMockLogger();
     validator = new ToolValidator(
+      logger,
       clinicRepository as unknown as ClinicRepository,
       doctorRepository as unknown as DoctorRepository,
       slotRepository as unknown as SlotRepository,

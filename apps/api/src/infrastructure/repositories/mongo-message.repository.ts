@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Message } from '@domain/entities/message.entity';
 import type { MessageRepository } from '@domain/repositories/message.repository';
+import { LOGGER, type Logger } from '@domain/services';
 import { MONGO_COLLECTIONS, MongoService } from '../database/mongo.service';
 
 const DUPLICATE_KEY_ERROR_CODE = 11000;
@@ -40,9 +41,10 @@ function isDuplicateKeyError(error: unknown): boolean {
 
 @Injectable()
 export class MongoMessageRepository implements MessageRepository {
-  private readonly logger = new Logger(MongoMessageRepository.name);
-
-  constructor(private readonly mongo: MongoService) {}
+  constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
+    private readonly mongo: MongoService,
+  ) {}
 
   private get collection() {
     return this.mongo.getCollection<MessageDocument>(MONGO_COLLECTIONS.messages);
@@ -64,9 +66,10 @@ export class MongoMessageRepository implements MessageRepository {
       await this.collection.insertOne(doc);
     } catch (error) {
       if (isDuplicateKeyError(error)) {
-        this.logger.debug(
-          `Duplicate messageId ignored (idempotent create): ${message.messageId ?? message.id}`,
-        );
+        this.logger.debug('Duplicate messageId ignored (idempotent create)', {
+          context: 'MongoMessageRepository',
+          messageId: message.messageId ?? message.id,
+        });
         return;
       }
       throw error;

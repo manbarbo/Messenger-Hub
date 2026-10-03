@@ -8,7 +8,8 @@ describe('EventEmitterEventPublisher', () => {
   it('emits domain events by eventName on EventEmitter2', () => {
     const emit = vi.fn();
     const eventEmitter = { emit } as unknown as EventEmitter2;
-    const publisher = new EventEmitterEventPublisher(eventEmitter);
+    const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    const publisher = new EventEmitterEventPublisher(eventEmitter, logger as never);
 
     const event = new AppointmentCreatedEvent('apt-1', 'clinic-1', 'doc-1', 'slot-1', '+573');
     publisher.publish(event);

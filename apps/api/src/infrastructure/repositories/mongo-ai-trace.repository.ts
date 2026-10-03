@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AITrace } from '@domain/entities/ai-trace.entity';
 import type { AITraceRepository } from '@domain/repositories/ai-trace.repository';
+import { LOGGER, type Logger } from '@domain/services';
 import { MONGO_COLLECTIONS, MongoService } from '../database/mongo.service';
 
 type AITraceDocument = {
@@ -37,7 +38,10 @@ function toDomain(doc: AITraceDocument): AITrace {
 
 @Injectable()
 export class MongoAITraceRepository implements AITraceRepository {
-  constructor(private readonly mongo: MongoService) {}
+  constructor(
+    private readonly mongo: MongoService,
+    @Inject(LOGGER) private readonly logger: Logger,
+  ) {}
 
   private get collection() {
     return this.mongo.getCollection<AITraceDocument>(MONGO_COLLECTIONS.aiTraces);
@@ -60,6 +64,12 @@ export class MongoAITraceRepository implements AITraceRepository {
     };
 
     await this.collection.insertOne(doc);
+
+    this.logger.debug('AI trace saved', {
+      context: 'MongoAITraceRepository',
+      traceId: trace.id,
+      conversationId: trace.conversationId,
+    });
   }
 
   async findByConversationId(conversationId: string): Promise<AITrace[]> {

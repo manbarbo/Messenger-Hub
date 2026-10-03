@@ -13,6 +13,7 @@ import type {
   ConversationRepository,
   MessageRepository,
 } from '@domain/repositories';
+import { LOGGER, type Logger } from '@domain/services';
 import type { ConversationDetailResult } from '../../dto/conversation-view';
 import { GetConversationDetailQuery } from './get-conversation-detail.query';
 
@@ -27,12 +28,18 @@ export class GetConversationDetailHandler
     @Inject(MESSAGE_REPOSITORY) private readonly messageRepository: MessageRepository,
     @Inject(AI_TRACE_REPOSITORY) private readonly aiTraceRepository: AITraceRepository,
     @Inject(CLINIC_REPOSITORY) private readonly clinicRepository: ClinicRepository,
+    @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
   async execute(query: GetConversationDetailQuery): Promise<ConversationDetailResult> {
     const conversation = await this.conversationRepository.findById(query.conversationId);
 
     if (!conversation) {
+      this.logger.warn('Conversation not found', {
+        context: 'GetConversationDetailHandler',
+        conversationId: query.conversationId,
+        reason: 'not_found',
+      });
       throw new ConversationNotFoundError(query.conversationId);
     }
 
@@ -41,6 +48,11 @@ export class GetConversationDetailHandler
       this.messageRepository.findByConversationId(query.conversationId),
       this.aiTraceRepository.findByConversationId(query.conversationId),
     ]);
+
+    this.logger.debug('Conversation detail loaded', {
+      context: 'GetConversationDetailHandler',
+      conversationId: query.conversationId,
+    });
 
     return {
       id: conversation.id,

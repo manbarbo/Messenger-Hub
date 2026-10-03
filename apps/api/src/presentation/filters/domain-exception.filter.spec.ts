@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ArgumentsHost, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ArgumentsHost, BadRequestException, NotFoundException } from '@nestjs/common';
+import type { Logger } from '@domain/services';
 import { DomainExceptionFilter } from './domain-exception.filter';
 import {
   AppointmentNotFoundError,
@@ -12,6 +13,10 @@ import {
   SlotNotFoundError,
   ValidationError,
 } from '@domain/errors';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 function createHost(): {
   host: ArgumentsHost;
@@ -29,7 +34,13 @@ function createHost(): {
 }
 
 describe('DomainExceptionFilter', () => {
-  const filter = new DomainExceptionFilter();
+  let logger: Logger;
+  let filter: DomainExceptionFilter;
+
+  beforeEach(() => {
+    logger = createMockLogger();
+    filter = new DomainExceptionFilter(logger);
+  });
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -43,6 +54,11 @@ describe('DomainExceptionFilter', () => {
     expect(json).toHaveBeenCalledWith({
       error: 'SlotAlreadyBookedError',
       message: 'Slot slot-1 is already booked',
+    });
+    expect(logger.warn).toHaveBeenCalledWith('Domain error handled', {
+      context: 'DomainExceptionFilter',
+      errorName: 'SlotAlreadyBookedError',
+      statusCode: 409,
     });
   });
 
@@ -141,7 +157,6 @@ describe('DomainExceptionFilter', () => {
   });
 
   it('maps unknown infrastructure errors to generic 500 and logs the raw error', () => {
-    const errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     const { host, status, json } = createHost();
     const raw = new Error('connect ECONNREFUSED 127.0.0.1:5432');
 
@@ -152,11 +167,14 @@ describe('DomainExceptionFilter', () => {
       error: 'InternalServerError',
       message: 'Internal server error',
     });
-    expect(errorSpy).toHaveBeenCalledWith(raw.message, raw.stack);
+    expect(logger.error).toHaveBeenCalledWith(raw.message, {
+      context: 'DomainExceptionFilter',
+      stack: raw.stack,
+      exceptionName: 'Error',
+    });
   });
 
   it('maps non-Error unknown values to generic 500', () => {
-    const errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     const { host, status, json } = createHost();
 
     filter.catch('boom', host);
@@ -166,7 +184,11 @@ describe('DomainExceptionFilter', () => {
       error: 'InternalServerError',
       message: 'Internal server error',
     });
-    expect(errorSpy).toHaveBeenCalledWith('boom', undefined);
+    expect(logger.error).toHaveBeenCalledWith('boom', {
+      context: 'DomainExceptionFilter',
+      stack: undefined,
+      exceptionName: 'string',
+    });
   });
 
   it('passes through BadRequestException with its existing object body', () => {

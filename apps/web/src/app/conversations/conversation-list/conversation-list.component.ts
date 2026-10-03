@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { isAppApiError } from '../../core/app-api.error';
+import { LoggerService } from '../../core/logger.service';
 import type { PaginationMeta } from '../../core/models/api.model';
 import {
   CONVERSATION_STATUS_LABELS,
@@ -41,6 +42,7 @@ export class ConversationListComponent {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly logger = inject(LoggerService);
 
   readonly pageSize = PAGE_SIZE;
   readonly statusFilter = signal<ConversationStatus | ''>('');
@@ -67,12 +69,14 @@ export class ConversationListComponent {
   }
 
   onStatusFilterChange(status: ConversationStatus | ''): void {
+    this.logger.info('Status filter changed', 'ConversationList', { status });
     this.statusFilter.set(status);
     this.page.set(1);
     this.loadConversations();
   }
 
   onPageChange(page: number): void {
+    this.logger.debug('Page changed', 'ConversationList', { page });
     this.page.set(page);
     this.loadConversations();
   }
@@ -99,10 +103,18 @@ export class ConversationListComponent {
           this.conversations.set(response.data);
           this.pagination.set(response.pagination);
           this.loading.set(false);
+          this.logger.debug('Conversations loaded', 'ConversationList', {
+            count: response.data.length,
+            page: response.pagination.page,
+            total: response.pagination.total,
+          });
         },
         error: (err: unknown) => {
           this.error.set(isAppApiError(err) ? err.message : 'Failed to load conversations');
           this.loading.set(false);
+          this.logger.error('Failed to load conversations', 'ConversationList', {
+            message: err instanceof Error ? err.message : String(err),
+          });
         },
       });
   }

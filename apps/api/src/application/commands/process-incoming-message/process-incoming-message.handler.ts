@@ -10,7 +10,7 @@ import {
   type ConversationRepository,
   type MessageRepository,
 } from '@domain/repositories';
-import { QUEUE_SERVICE, type QueueService } from '@domain/services';
+import { LOGGER, QUEUE_SERVICE, type Logger, type QueueService } from '@domain/services';
 import { ProcessIncomingMessageCommand } from './process-incoming-message.command';
 
 export interface ProcessIncomingMessageResult {
@@ -24,6 +24,7 @@ export class ProcessIncomingMessageHandler
   implements ICommandHandler<ProcessIncomingMessageCommand>
 {
   constructor(
+    @Inject(LOGGER) private readonly logger: Logger,
     @Inject(CONVERSATION_REPOSITORY)
     private readonly conversationRepository: ConversationRepository,
     @Inject(MESSAGE_REPOSITORY) private readonly messageRepository: MessageRepository,
@@ -34,6 +35,12 @@ export class ProcessIncomingMessageHandler
     const existingMessage = await this.messageRepository.findByMessageId(command.messageId);
 
     if (existingMessage) {
+      this.logger.debug('Duplicate message detected', {
+        context: 'ProcessIncomingMessage',
+        messageId: command.messageId,
+        conversationId: existingMessage.conversationId,
+        duplicate: true,
+      });
       return { conversationId: existingMessage.conversationId, duplicate: true };
     }
 
@@ -44,6 +51,11 @@ export class ProcessIncomingMessageHandler
 
     if (!conversation) {
       conversation = await this.conversationRepository.create(this.buildConversation(command));
+      this.logger.info('New conversation created', {
+        context: 'ProcessIncomingMessage',
+        conversationId: conversation.id,
+        clinicId: command.clinicId,
+      });
     }
 
     await this.messageRepository.create(this.buildMessage(command, conversation.id));
@@ -54,6 +66,12 @@ export class ProcessIncomingMessageHandler
       from: command.from,
       text: command.text,
       clinicId: command.clinicId,
+    });
+
+    this.logger.info('Message persisted and queued', {
+      context: 'ProcessIncomingMessage',
+      messageId: command.messageId,
+      conversationId: conversation.id,
     });
 
     return { conversationId: conversation.id, duplicate: false };

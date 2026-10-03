@@ -14,11 +14,16 @@ import type {
   MessageRepository,
   SlotRepository,
 } from '@domain/repositories';
+import type { Logger } from '@domain/services';
 import type { LLMChatResult, LLMToolCall } from '@domain/value-objects/llm-chat.vo';
 import { MockLLMService } from '@infrastructure/llm/mock-llm.service';
 import { AIOrchestratorService, MAX_TOOL_ITERATIONS } from './ai-orchestrator.service';
 import { PromptBuilder } from './prompt-builder';
 import { ToolValidator } from './tool-validator';
+
+function createMockLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
 const clinic: Clinic = {
   id: 'clinic-1',
@@ -62,6 +67,7 @@ describe('AIOrchestratorService', () => {
   let aiTraceRepository: { create: ReturnType<typeof vi.fn> };
   let commandBus: { execute: ReturnType<typeof vi.fn> };
   let toolValidator: { validate: ReturnType<typeof vi.fn> };
+  let logger: Logger;
   let orchestrator: AIOrchestratorService;
 
   const history: Message[] = [
@@ -85,8 +91,10 @@ describe('AIOrchestratorService', () => {
     aiTraceRepository = { create: vi.fn().mockResolvedValue(undefined) };
     commandBus = { execute: vi.fn() };
     toolValidator = { validate: vi.fn() };
+    logger = createMockLogger();
 
     orchestrator = new AIOrchestratorService(
+      logger,
       llmService,
       clinicRepository as unknown as ClinicRepository,
       messageRepository as unknown as MessageRepository,

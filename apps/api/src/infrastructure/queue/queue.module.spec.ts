@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { QUEUE_SERVICE } from '@domain/services';
+import { LOGGER, QUEUE_SERVICE } from '@domain/services';
 import { BullMQQueueService } from './bullmq-queue.service';
 import { QueueModule } from './queue.module';
 
@@ -21,6 +21,8 @@ vi.mock('bullmq', () => ({
   },
 }));
 
+const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
 const mockConfigService = {
   get: <T>(key: string, defaultValue?: T): T | undefined => {
     const values: Record<string, string> = {
@@ -33,8 +35,11 @@ const mockConfigService = {
 
 @Global()
 @Module({
-  providers: [{ provide: ConfigService, useValue: mockConfigService }],
-  exports: [ConfigService],
+  providers: [
+    { provide: ConfigService, useValue: mockConfigService },
+    { provide: LOGGER, useValue: mockLogger },
+  ],
+  exports: [ConfigService, LOGGER],
 })
 class MockConfigModule {}
 
