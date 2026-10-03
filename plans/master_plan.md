@@ -62,7 +62,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 |----|-------|------|-------|--------|------------|
 | T-1.1 | Foundation | Project Scaffolding | Full Stack | Completed | 1–2 |
 | T-1.2 | Foundation | Domain Layer | Backend | Completed | 2–3 |
-| T-1.3 | Foundation | Database Setup | Backend | Backlog | 2–3 |
+| T-1.3 | Foundation | Database Setup | Backend | Completed | 2–3 |
 | T-2.1 | Backend Core | PostgreSQL Repositories | Backend | Backlog | 2–3 |
 | T-2.2 | Backend Core | MongoDB Repositories | Backend | Backlog | 2–3 |
 | T-2.3 | Backend Core | CQRS Commands | Backend | Backlog | 2–3 |

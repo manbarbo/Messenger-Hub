@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppointmentStatus {
+  CONFIRMED
+  CANCELLED
+
+  @@map("appointment_status")
+}
+
+model Clinic {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  address   String
+  phone     String
+  timezone  String   @default("America/Bogota")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  doctors      Doctor[]
+  slots        Slot[]
+  appointments Appointment[]
+  knowledgeDocuments KnowledgeDocument[]
+
+  @@map("clinics")
+}
+
+model Doctor {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clinicId   String   @map("clinic_id") @db.Uuid
+  name       String
+  specialty  String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id])
+  slots        Slot[]
+  appointments Appointment[]
+
+  @@index([clinicId])
+  @@index([specialty])
+  @@index([clinicId, specialty])
+  @@map("doctors")
+}
+
+model Slot {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clinicId  String   @map("clinic_id") @db.Uuid
+  doctorId  String   @map("doctor_id") @db.Uuid
+  startTime DateTime @map("start_time") @db.Timestamptz
+  endTime   DateTime @map("end_time") @db.Timestamptz
+  isBooked  Boolean  @default(false) @map("is_booked")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  clinic       Clinic       @relation(fields: [clinicId], references: [id])
+  doctor       Doctor       @relation(fields: [doctorId], references: [id])
+  appointment  Appointment?
+
+  @@unique([doctorId, startTime])
+  @@index([clinicId, startTime])
+  @@index([isBooked])
+  @@index([clinicId, isBooked, startTime])
+  @@map("slots")
+}
+
+model Appointment {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clinicId     String            @map("clinic_id") @db.Uuid
+  doctorId     String            @map("doctor_id") @db.Uuid
+  slotId       String            @unique @map("slot_id") @db.Uuid
+  patientPhone String            @map("patient_phone")
+  patientName  String?           @map("patient_name")
+  status       AppointmentStatus @default(CONFIRMED)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  clinic Clinic @relation(fields: [clinicId], references: [id])
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+  slot   Slot   @relation(fields: [slotId], references: [id])
+
+  @@index([patientPhone])
+  @@index([clinicId, status])
+  @@index([doctorId, createdAt])
+  @@map("appointments")
+}
+
+model KnowledgeDocument {
+  id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clinicId  String              @map("clinic_id") @db.Uuid
+  title     String
+  content   String
+  category  String
+  embedding Unsupported("vector(768)")? // nullable until T-7.1 seeds embeddings
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  clinic Clinic @relation(fields: [clinicId], references: [id])
+
+  @@index([clinicId])
+  @@index([category])
+  @@map("knowledge_documents")
+}
