@@ -65,7 +65,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-1.3 | Foundation | Database Setup | Backend | Completed | 2–3 |
 | T-2.1 | Backend Core | PostgreSQL Repositories | Backend | Completed | 2–3 |
 | T-2.2 | Backend Core | MongoDB Repositories | Backend | Completed | 2–3 |
-| T-2.3 | Backend Core | CQRS Commands | Backend | Backlog | 2–3 |
+| T-2.3 | Backend Core | CQRS Commands | Backend | Completed | 2–3 |
 | T-2.4 | Backend Core | CQRS Queries | Backend | Backlog | 1–2 |
 | T-3.1 | AI Pipeline | LLM Service & Tool Calling | Backend | Backlog | 3–4 |
 | T-3.2 | AI Pipeline | RAG Pipeline | Backend | Backlog | 2–3 |

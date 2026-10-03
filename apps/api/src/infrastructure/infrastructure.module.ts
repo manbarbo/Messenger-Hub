@@ -7,6 +7,9 @@ import {
   MESSAGE_REPOSITORY,
   SLOT_REPOSITORY,
 } from '@domain/repositories';
+import { EVENT_PUBLISHER, QUEUE_SERVICE } from '@domain/services';
+import { EventEmitterEventPublisher } from './events/event-emitter-event-publisher';
+import { InMemoryQueueService } from './queue/in-memory-queue.service';
 import { PrismaAppointmentRepository } from './repositories/prisma-appointment.repository';
 import { PrismaKnowledgeRepository } from './repositories/prisma-knowledge.repository';
 import { PrismaSlotRepository } from './repositories/prisma-slot.repository';
@@ -22,6 +25,8 @@ import { MongoMessageRepository } from './repositories/mongo-message.repository'
     { provide: CONVERSATION_REPOSITORY, useClass: MongoConversationRepository },
     { provide: MESSAGE_REPOSITORY, useClass: MongoMessageRepository },
     { provide: AI_TRACE_REPOSITORY, useClass: MongoAITraceRepository },
+    { provide: EVENT_PUBLISHER, useClass: EventEmitterEventPublisher },
+    { provide: QUEUE_SERVICE, useClass: InMemoryQueueService },
   ],
   exports: [
     APPOINTMENT_REPOSITORY,
@@ -30,6 +35,8 @@ import { MongoMessageRepository } from './repositories/mongo-message.repository'
     CONVERSATION_REPOSITORY,
     MESSAGE_REPOSITORY,
     AI_TRACE_REPOSITORY,
+    EVENT_PUBLISHER,
+    QUEUE_SERVICE,
   ],
 })
 export class InfrastructureModule {}

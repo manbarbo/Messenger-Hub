@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AppointmentNotFoundError,
   ClinicNotFoundError,
   LLMIterationLimitError,
   LLMProviderError,
@@ -27,6 +28,12 @@ describe('domain errors', () => {
     const err = new SlotNotFoundError('slot-1');
     expect(err.name).toBe('SlotNotFoundError');
     expect(err.slotId).toBe('slot-1');
+  });
+
+  it('AppointmentNotFoundError includes appointment id', () => {
+    const err = new AppointmentNotFoundError('apt-1');
+    expect(err.name).toBe('AppointmentNotFoundError');
+    expect(err.appointmentId).toBe('apt-1');
   });
 
   it('ClinicNotFoundError includes clinic id', () => {

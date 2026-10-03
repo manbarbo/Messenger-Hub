@@ -1,6 +1,7 @@
 export { ValidationError, type FieldError } from './validation.error';
 export { SlotAlreadyBookedError } from './slot-already-booked.error';
 export { SlotNotFoundError } from './slot-not-found.error';
+export { AppointmentNotFoundError } from './appointment-not-found.error';
 export { ClinicNotFoundError } from './clinic-not-found.error';
 export { PastDateError } from './past-date.error';
 export { LLMProviderError } from './llm-provider.error';
