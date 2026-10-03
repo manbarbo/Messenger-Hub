@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+coverage/
+.angular/
+.pnpm-store/
+pnpm-lock.yaml
+*.min.js
+*.min.css
+CHANGELOG.md
+docs/
+plans/

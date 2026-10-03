@@ -1,0 +1,35 @@
+{
+  "name": "messengerhub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered scheduling assistant for clinics (WhatsApp simulator, RAG, appointments)",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"pnpm --filter api start:dev\" \"pnpm --filter web start\"",
+    "dev:api": "pnpm --filter api start:dev",
+    "dev:web": "pnpm --filter web start",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:cov": "pnpm -r test:cov",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.5.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.12.1",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "esbuild",
+      "@parcel/watcher",
+      "@swc/core"
+    ]
+  }
+}
