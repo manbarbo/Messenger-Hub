@@ -15,6 +15,11 @@ import {
   QUEUE_SERVICE,
   SLOT_REPOSITORY,
 } from '@domain/index';
+import { ApplicationModule } from '../application/application.module';
+import { CancelAppointmentHandler } from '../application/commands/cancel-appointment/cancel-appointment.handler';
+import { CreateAppointmentHandler } from '../application/commands/create-appointment/create-appointment.handler';
+import { GetConversationDetailHandler } from '../application/queries/get-conversation-detail/get-conversation-detail.handler';
+import { ListConversationsHandler } from '../application/queries/list-conversations/list-conversations.handler';
 import { MongoService } from './database/mongo.service';
 import { PrismaService } from './database/prisma.service';
 import { InfrastructureModule } from './infrastructure.module';
@@ -89,5 +94,22 @@ describe('InfrastructureModule', () => {
     for (const token of tokens) {
       expect(moduleRef.get(token)).toBeDefined();
     }
+  });
+
+  it('is marked @Global so ApplicationModule can resolve exported tokens', () => {
+    expect(Reflect.getMetadata('__module:global__', InfrastructureModule)).toBe(true);
+  });
+
+  it('lets ApplicationModule handlers resolve InfrastructureModule tokens at runtime', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [MockInfrastructureDepsModule, InfrastructureModule, ApplicationModule],
+    }).compile();
+
+    expect(moduleRef.get(CreateAppointmentHandler)).toBeInstanceOf(CreateAppointmentHandler);
+    expect(moduleRef.get(CancelAppointmentHandler)).toBeInstanceOf(CancelAppointmentHandler);
+    expect(moduleRef.get(ListConversationsHandler)).toBeInstanceOf(ListConversationsHandler);
+    expect(moduleRef.get(GetConversationDetailHandler)).toBeInstanceOf(
+      GetConversationDetailHandler,
+    );
   });
 });

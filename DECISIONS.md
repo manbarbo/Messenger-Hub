@@ -628,7 +628,35 @@ class MockLLMService implements LLMService {
 
 ---
 
-# 21. Trade-offs Summary
+# 21. Global InfrastructureModule for Cross-Layer DI Tokens
+
+**Status:** Accepted
+
+**Context:** After AppModule wiring (T-3.2), the API failed at bootstrap with `UnknownDependenciesException`: `CreateAppointmentHandler` could not resolve `Symbol(SlotRepository)` inside `ApplicationModule`. Handlers in the application layer inject domain tokens (`SLOT_REPOSITORY`, `APPOINTMENT_REPOSITORY`, `CONVERSATION_REPOSITORY`, `EVENT_PUBLISHER`, `QUEUE_SERVICE`, etc.) that are provided by `InfrastructureModule`. NestJS only resolves a token from a module's own providers, modules it imports that export the token, or global modules. `ApplicationModule` imports only `CqrsModule`, and `InfrastructureModule` was not global — so production DI failed. Unit tests passed only because `application.module.spec.ts` used a `@Global()` mock module that provided all tokens, masking the wiring gap.
+
+**Decision:** Mark `InfrastructureModule` as `@Global()`, matching the existing pattern used by `DatabaseModule` and `EmbeddingModule`.
+
+**Rationale:**
+
+- **Consistent with established pattern** — `DatabaseModule` (`@Global`, exports `PrismaService`/`MongoService`) and `EmbeddingModule` (`@Global`, exports `EMBEDDING_SERVICE`) already use this approach so infrastructure adapters can be injected without direct import edges (documented in T-1.3 and T-3.2).
+- **Preserves layer boundaries** — Application handlers still depend only on domain repository/service tokens and interfaces. `@Global` is NestJS DI wiring at the composition root, not a code dependency from Application → Infrastructure.
+- **Single fix for all handlers** — Create/cancel appointment, process incoming message, and conversation query handlers all resolve the same InfrastructureModule tokens.
+- **No Application → Infrastructure import** — Avoids coupling layers at the module-graph level and keeps `ApplicationModule` testable with mock-only dependency modules.
+
+**Rejected alternative:** Have `ApplicationModule` import `InfrastructureModule`.
+
+- More explicit NestJS wiring, but couples Application to Infrastructure in the module graph.
+- Breaks the global-infrastructure-module convention already used for database and embeddings.
+- Risks loading real Prisma/Mongo adapters inside `ApplicationModule` unit tests.
+
+**Trade-offs:**
+
+- Global modules make exported tokens visible everywhere once imported in `AppModule`, which can hide a missing explicit import. Mitigated by regression tests asserting ApplicationModule handler resolution against `InfrastructureModule`.
+- Future application-layer services that inject `LLM_SERVICE` need the same treatment for `LlmModule` (or an explicit import) when T-3.4 registers the AI orchestrator.
+
+---
+
+# 22. Trade-offs Summary
 
 | Decision | Chose | Instead Of | Cost |
 |----------|-------|------------|------|
@@ -642,7 +670,7 @@ class MockLLMService implements LLMService {
 
 ---
 
-# 22. What I Would Do Differently with More Time
+# 23. What I Would Do Differently with More Time
 
 - **Response quality evaluation** — Automated evaluation of LLM responses (correctness, helpfulness, hallucination detection) using a separate evaluation pipeline.
 - **Observability** — Distributed tracing (X-Ray) across API → Queue → Worker → LLM. Custom CloudWatch dashboards for cost per conversation, tool call success rates, and escalation rates.
@@ -654,7 +682,7 @@ class MockLLMService implements LLMService {
 
 ---
 
-# 23. Use of AI
+# 24. Use of AI
 
 **Where AI assisted:**
 

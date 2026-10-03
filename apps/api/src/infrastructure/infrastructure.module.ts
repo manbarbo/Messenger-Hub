@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import {
   AI_TRACE_REPOSITORY,
   APPOINTMENT_REPOSITORY,
@@ -19,6 +19,7 @@ import { MongoAITraceRepository } from './repositories/mongo-ai-trace.repository
 import { MongoConversationRepository } from './repositories/mongo-conversation.repository';
 import { MongoMessageRepository } from './repositories/mongo-message.repository';
 
+@Global()
 @Module({
   providers: [
     { provide: APPOINTMENT_REPOSITORY, useClass: PrismaAppointmentRepository },
