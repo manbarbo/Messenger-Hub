@@ -10,6 +10,13 @@ export function formatColombiaDate(now: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+export function formatColombiaDateTime(now: Date = new Date()): string {
+  const colombia = new Date(now.getTime() - COLOMBIA_UTC_OFFSET_HOURS * 3_600_000);
+  const hours = String(colombia.getUTCHours()).padStart(2, '0');
+  const minutes = String(colombia.getUTCMinutes()).padStart(2, '0');
+  return `${formatColombiaDate(now)} ${hours}:${minutes}`;
+}
+
 export function isValidCalendarDate(fecha: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     return false;

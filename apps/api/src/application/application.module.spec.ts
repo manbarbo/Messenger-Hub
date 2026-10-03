@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { CqrsModule } from '@nestjs/cqrs';
+import { ConfigService } from '@nestjs/config';
 import { describe, expect, it } from 'vitest';
 import {
   AI_TRACE_REPOSITORY,
@@ -26,15 +27,30 @@ import { CreateAppointmentHandler } from './commands/create-appointment/create-a
 import { ProcessIncomingMessageHandler } from './commands/process-incoming-message/process-incoming-message.handler';
 import { AppointmentCancelledEventHandler } from './event-handlers/appointment-cancelled.handler';
 import { AppointmentCreatedEventHandler } from './event-handlers/appointment-created.handler';
+import { AIOrchestratorService } from './llm/ai-orchestrator.service';
 import { ToolValidator } from './llm/tool-validator';
 import { GetConversationDetailHandler } from './queries/get-conversation-detail/get-conversation-detail.handler';
 import { ListConversationsHandler } from './queries/list-conversations/list-conversations.handler';
 
 const noop = async () => undefined;
 
+const mockConfigService = {
+  get: <T>(key: string, defaultValue?: T): T | undefined => {
+    const values: Record<string, string> = {
+      LLM_API_KEY: 'test-key',
+      LLM_BASE_URL: 'https://example.com/v1',
+      LLM_MODEL: 'gemini-2.5-flash',
+      EMBEDDING_MODEL: 'text-embedding-004',
+      EMBEDDING_DIMENSIONS: '768',
+    };
+    return (values[key] as T | undefined) ?? defaultValue;
+  },
+};
+
 @Global()
 @Module({
   providers: [
+    { provide: ConfigService, useValue: mockConfigService },
     { provide: SLOT_REPOSITORY, useValue: { findById: noop, findAvailable: noop } },
     {
       provide: APPOINTMENT_REPOSITORY,
@@ -53,9 +69,10 @@ const noop = async () => undefined;
     { provide: DOCTOR_REPOSITORY, useValue: { existsByClinicAndSpecialty: noop } },
     { provide: EVENT_PUBLISHER, useValue: { publish: noop } },
     { provide: QUEUE_SERVICE, useValue: { push: noop } },
-    { provide: KNOWLEDGE_REPOSITORY, useValue: {} },
+    { provide: KNOWLEDGE_REPOSITORY, useValue: { search: noop } },
   ],
   exports: [
+    ConfigService,
     SLOT_REPOSITORY,
     APPOINTMENT_REPOSITORY,
     CONVERSATION_REPOSITORY,
@@ -92,7 +109,7 @@ describe('ApplicationModule', () => {
     expect(imports ?? []).toContain(CqrsModule);
   });
 
-  it('compiles with mocked domain dependencies', async () => {
+  it('compiles with mocked domain dependencies and exposes AI orchestrator', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [MockApplicationDepsModule, ApplicationModule],
     }).compile();
@@ -107,5 +124,6 @@ describe('ApplicationModule', () => {
       GetConversationDetailHandler,
     );
     expect(moduleRef.get(ToolValidator)).toBeInstanceOf(ToolValidator);
+    expect(moduleRef.get(AIOrchestratorService)).toBeInstanceOf(AIOrchestratorService);
   });
 });

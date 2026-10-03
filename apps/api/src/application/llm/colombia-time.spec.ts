@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { describe, expect, it } from 'vitest';
 import {
   formatColombiaDate,
+  formatColombiaDateTime,
   isColombiaDateInPast,
   isColombiaDateTimeInPast,
   isValidCalendarDate,
@@ -13,6 +14,11 @@ describe('colombia-time helpers', () => {
   it('formats current date in America/Bogota (UTC-5)', () => {
     const now = new Date('2026-10-02T02:30:00Z');
     expect(formatColombiaDate(now)).toBe('2026-10-01');
+  });
+
+  it('formats date-time in America/Bogota', () => {
+    const now = new Date('2026-10-05T15:30:00Z');
+    expect(formatColombiaDateTime(now)).toBe('2026-10-05 10:30');
   });
 
   it('validates real calendar dates only', () => {

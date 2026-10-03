@@ -3,6 +3,7 @@ import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { vi } from 'vitest';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ConfigService } from '@nestjs/config';
 import {
   AI_TRACE_REPOSITORY,
   APPOINTMENT_REPOSITORY,
@@ -39,6 +40,18 @@ const mockPrisma = {};
 const mockMongo = {};
 const mockEmbedding = { embed: async () => [0.1, 0.2] };
 const mockEventEmitter = { emit: vi.fn() };
+const mockConfigService = {
+  get: <T>(key: string, defaultValue?: T): T | undefined => {
+    const values: Record<string, string> = {
+      LLM_API_KEY: 'test-key',
+      LLM_BASE_URL: 'https://example.com/v1',
+      LLM_MODEL: 'gemini-2.5-flash',
+      EMBEDDING_MODEL: 'text-embedding-004',
+      EMBEDDING_DIMENSIONS: '768',
+    };
+    return (values[key] as T | undefined) ?? defaultValue;
+  },
+};
 
 @Global()
 @Module({
@@ -47,8 +60,9 @@ const mockEventEmitter = { emit: vi.fn() };
     { provide: MongoService, useValue: mockMongo },
     { provide: EMBEDDING_SERVICE, useValue: mockEmbedding },
     { provide: EventEmitter2, useValue: mockEventEmitter },
+    { provide: ConfigService, useValue: mockConfigService },
   ],
-  exports: [PrismaService, MongoService, EMBEDDING_SERVICE, EventEmitter2],
+  exports: [PrismaService, MongoService, EMBEDDING_SERVICE, EventEmitter2, ConfigService],
 })
 class MockInfrastructureDepsModule {}
 
