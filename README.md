@@ -15,13 +15,16 @@ The core challenge is reliability: the AI must not invent data, must validate al
 
 ## Features
 
-### Webhook & Event Reception
+### Implemented (Phases 1–3)
 
-- Fast HTTP response for incoming messages.
-- Idempotency control: Duplicate `message_id`s are safely ignored.
-- Background processing mechanism to decouple HTTP response from LLM latency.
+#### Domain & Persistence Core
 
-### AI Engine & Tool Calling
+- Clean Architecture domain layer (entities, value objects, enums, repository interfaces, domain errors, events).
+- Dual-database persistence adapters: PostgreSQL (Prisma + pgvector) for transactional data; MongoDB (driver) for conversations, messages, and AI traces.
+- CQRS command/query handlers with mock-friendly repository interfaces.
+- DB-level idempotency primitives (`messages.messageId` unique sparse index; `appointments.slotId` unique constraint).
+
+#### AI Engine & Tool Calling (backend core, not yet exposed via HTTP)
 
 Strictly controlled LLM execution using schema validation (Zod) for the following tools:
 
@@ -30,19 +33,34 @@ Strictly controlled LLM execution using schema validation (Zod) for the followin
 - `agendar_cita`: Transactional insertion of appointments preventing double-booking.
 - `escalar_a_humano`: Safe fallback for unresolvable queries.
 
-### Traceability & Monitoring
+Implemented pipeline components:
 
-Every interaction logs exact metrics to a NoSQL database for auditing:
+- `LLMService` interface + `GeminiLLMService` adapter (OpenAI SDK → Gemini endpoint) + `MockLLMService` for tests.
+- `EmbeddingService` + `GeminiEmbeddingService` (`text-embedding-004`, 768 dimensions).
+- `AIOrchestratorService`: prompt construction, tool-calling loop (max 5 iterations), validation feedback to the LLM, forced escalation, and AI trace persistence.
+- Colombia timezone interpretation (`America/Bogota`, fixed UTC-5) in prompts and domain validation.
+- Unit tests across domain, CQRS handlers, repositories, LLM/RAG/orchestration (Vitest).
 
-- Model used, execution latency, and total cost/tokens.
-- Detailed trace of tools called, arguments proposed by the AI, and the exact result returned by the system.
-- Final conversation state (`resuelta_por_ia`, `cita_agendada`, `escalada`).
+### Planned (Phases 4–8 — backlog)
 
-### Minimalist Dashboard
+#### Webhook & Event Reception
 
-- Simulator to test incoming patient messages.
+- Fast HTTP response for incoming messages.
+- Idempotency control at the webhook boundary: duplicate `message_id`s safely ignored.
+- Background worker consuming from BullMQ (Redis) to decouple HTTP response from LLM latency.
+
+#### Traceability & Monitoring (dashboard API + UI)
+
 - Conversation inbox with state filtering.
-- Detailed view of the AI's "thought process" and tool executions.
+- Conversation detail with message timeline and AI traces (tokens, latency, cost, tool calls).
+- Patient simulator to send test messages.
+
+#### Seed Data
+
+- Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, knowledge documents + embeddings).
+- MongoDB seed with sample conversations and traces.
+
+> **Current queue binding:** `QUEUE_SERVICE` is bound to `InMemoryQueueService` until T-4.1 introduces the BullMQ adapter. Redis is already provisioned in `docker-compose.yml`.
 
 ## Tech Stack
 
@@ -67,9 +85,24 @@ Every interaction logs exact metrics to a NoSQL database for auditing:
 The backend implements Clean Architecture (Presentation → Application → Domain ← Infrastructure) principles to isolate the AI logic from business rules and persistence:
 
 - **Data Segregation**: PostgreSQL handles the core transactional domain (Clinics, Slots, Appointments, pgvector for RAG) where ACID properties and constraints are mandatory. MongoDB handles high-volume, flexible schema data (Chat history, AI execution traces).
-- **Asynchronous Processing**: Webhooks push events to a queue, processed by a background worker to handle LLM latency gracefully.
+- **Asynchronous Processing (target design)**: Webhooks push events to a queue, processed by a background worker to handle LLM latency gracefully. Phase 4 will replace the current in-memory queue binding with BullMQ.
 - **Fail-Safe Tool Calling**: AI outputs are treated as untrusted input. They are validated against domain rules (e.g., timezone parsing in UTC-5, valid clinic IDs) before hitting the database.
 - **Idempotency**: Handled at the database level to prevent duplicate processing.
+
+## Implementation Status
+
+| Phase | Scope | Status |
+| ----- | ----- | ------ |
+| 1 | Foundation (scaffolding, domain, databases) | Completed |
+| 2 | Backend core data (PG/Mongo repos, CQRS) | Completed |
+| 3 | AI pipeline (LLM, RAG, tool validation, orchestration) | Completed |
+| 4 | Async processing (BullMQ queue, worker, webhook) | Backlog |
+| 5 | API layer (controllers, routes, error handling) | Backlog |
+| 6 | Frontend (Angular dashboard + simulator) | Backlog |
+| 7 | Seed data (full PG knowledge base + Mongo samples) | Backlog |
+| 8 | Testing & coverage gate (≥ 75%) | Backlog |
+
+See [plans/master_plan.md](./plans/master_plan.md) for the full task breakdown.
 
 ## Project Structure
 
@@ -81,27 +114,28 @@ MessengerHub/
 │   └── opencode.json            # OpenCode agents and commands config
 ├── apps/
 │   ├── api/                     # NestJS backend (API + Worker)
+│   │   ├── prisma/              # Schema, migrations, partial seed (clinic/doctor/slots)
+│   │   ├── scripts/             # Operational scripts (e.g., ensure-mongo-indexes.ts)
 │   │   └── src/
-│   │       ├── domain/          # Entities, repository interfaces, AI tool schemas
-│   │       ├── application/     # Use cases, LLM orchestration, RAG logic
-│   │       ├── infrastructure/  # Postgres (pgvector) & Mongo adapters, LLM clients
-│   │       └── presentation/    # Express endpoints (webhook, dashboard API)
+│   │       ├── domain/          # Entities, VOs, enums, repository/service interfaces, errors, events
+│   │       ├── application/     # CQRS handlers, DTOs, AI orchestration (LLM + RAG + tools)
+│   │       ├── infrastructure/  # Postgres (pgvector) & Mongo adapters, LLM/embedding clients, in-memory queue
+│   │       └── presentation/    # Placeholder — controllers arrive in Phase 5
 │   └── web/                     # Angular frontend (Dashboard & Simulator)
 │       └── src/
 │           ├── app/
-│           │   ├── conversations/  # Conversation inbox and detail views
-│           │   ├── simulator/      # Patient message simulator
-│           │   ├── shared/         # Reusable components, services, interceptors
-│           │   └── core/           # Guards, models, API service
+│           │   ├── conversations/  # Conversation inbox and detail views (Phase 6)
+│           │   ├── simulator/      # Patient message simulator (Phase 6)
+│           │   ├── shared/         # Reusable components, services, interceptors (Phase 6)
+│           │   └── core/           # Guards, models, API service (Phase 6)
 │           ├── assets/
 │           └── environments/
-├── docs/                        # Seed data (knowledge base documents)
+├── docs/                        # Placeholder — knowledge base seed documents (Phase 7)
 ├── plans/                       # Task plans
 │   ├── backlog/                 # Pending tasks
 │   ├── inProgress/              # Active tasks
 │   ├── completed/               # Finished tasks
 │   └── master_plan.md           # High-level implementation overview
-├── scripts/                     # Database seeding and setup scripts
 ├── AGENTS.md
 ├── DECISIONS.md
 ├── DESIGN.md
@@ -127,33 +161,40 @@ MessengerHub/
 pnpm install
 ```
 
-2. Create environment variables based on the template:
+2. Create environment variables from the API template:
 
 ```bash
-cp .env.example .env
+cp apps/api/.env.example apps/api/.env
 ```
 
-_Make sure to add your `LLM_API_KEY` to the `.env` file. The `.env.example` file contains all required variables including `LLM_BASE_URL` for the Gemini endpoint._
+_Make sure to add your `LLM_API_KEY` to `apps/api/.env`. The template includes `LLM_BASE_URL` (Gemini OpenAI-compatible endpoint), `EMBEDDING_MODEL`/`EMBEDDING_DIMENSIONS`, `DATABASE_URL`, `MONGODB_URI`, and Redis settings._
 
-3. Start the infrastructure (PostgreSQL + MongoDB):
+3. Start the infrastructure (PostgreSQL + MongoDB + Redis):
 
 ```bash
 docker compose up -d
 ```
 
-4. Run migrations and seed the databases (injects clinic data, doctors, 2 weeks of availability, and vectorizes the knowledge base):
+4. Run PostgreSQL migrations and the partial seed (clinic, doctor, availability slots — knowledge documents/embeddings come with Phase 7):
 
 ```bash
-pnpm run db:setup
+pnpm --filter api db:migrate
+pnpm --filter api db:seed
+```
+
+Optionally ensure MongoDB indexes are present:
+
+```bash
+pnpm --filter api mongo:indexes
 ```
 
 ### Running the Application
 
 ```bash
-# Start backend (API & Worker)
+# Start backend (API)
 pnpm run dev:api
 
-# Start frontend dashboard (in a separate terminal)
+# Start frontend dashboard (in a separate terminal; features land in Phase 6)
 pnpm run dev:web
 
 # Or both in parallel
@@ -162,13 +203,13 @@ pnpm dev
 
 ## Testing
 
-Minimum coverage: **75%** (branches, functions, lines, statements).
+Minimum coverage target: **75%** (branches, functions, lines, statements) — enforced in Phase 8.
 
 ```bash
 # All tests
 pnpm test
 
-# Backend only
+# Backend only (Vitest)
 pnpm --filter api test
 
 # Frontend only
@@ -179,11 +220,13 @@ pnpm --filter api test:cov
 pnpm --filter web test:cov
 ```
 
-Tests focus on domain entities, tool calling validation (Zod schemas, domain rules), CQRS handlers, repository contracts, LLM orchestration (iteration limits, error handling, escalation), API controllers, and frontend component states.
+Backend unit tests currently cover domain entities, tool calling validation (Zod schemas, domain rules), CQRS handlers, repository contracts, LLM orchestration (iteration limits, error handling, escalation), and infrastructure adapters.
 
 Unit tests use mock repositories, mock LLM services, and mock event publishers — no real database, HTTP server, or LLM API required.
 
 ## API Endpoints
+
+> **Status:** Planned for Phase 5 (controllers/routes are not exposed yet). The contracts below are the target API described in [DESIGN.md](./DESIGN.md#5-api-contracts).
 
 | Method | Path                     | Description                                     |
 | ------ | ------------------------ | ----------------------------------------------- |
@@ -191,6 +234,8 @@ Unit tests use mock repositories, mock LLM services, and mock event publishers �
 | `GET`  | `/api/conversations`     | Lists conversations for the dashboard           |
 | `GET`  | `/api/conversations/:id` | Gets conversation details and AI traces         |
 | `POST` | `/api/simulator`         | Sends a test message as if from a patient       |
+
+Currently the API only exposes NestJS bootstrap health routes (`GET /`, `GET /health`) until Phase 5 lands.
 
 ## License
 

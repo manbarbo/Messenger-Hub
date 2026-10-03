@@ -9,6 +9,31 @@ This document provides a high-level overview of all implementation tasks. Detail
 
 ---
 
+## Phase 1–3 Completion Notes (2026-10-02)
+
+Phases 1–3 are **Completed**. What exists in the codebase today:
+
+| Area | Delivered |
+|------|-----------|
+| Domain | Entities (interfaces + pure functions), enums, value objects, repository/service DI tokens, domain errors, domain events |
+| Persistence | Prisma schema + init migration + partial seed (clinic/doctor/slots); Mongo service + indexes (`messages.messageId` unique sparse) |
+| Repositories | 5 Prisma adapters (appointment, clinic, doctor, slot, knowledge/RAG) + 3 Mongo adapters (conversation, message, ai_trace) |
+| CQRS | 3 commands (create/cancel appointment, process incoming message) + 2 queries (list conversations, get detail) + event handlers (log-only) |
+| AI pipeline | `LLMService` + `GeminiLLMService` + `MockLLMService`; `EmbeddingService` + `GeminiEmbeddingService`; RAG via pgvector cosine > 0.7; Zod schemas + `ToolValidator`; `AIOrchestratorService` (max 5 iterations, force-escalate, traces); `PromptBuilder`; `colombia-time.ts` |
+| DI | `DatabaseModule`, `InfrastructureModule` (@Global), `LlmModule`, `EmbeddingModule` (@Global), `AIModule`, `ApplicationModule` |
+| Tests | Vitest unit specs across domain, CQRS, repositories, LLM/RAG/orchestration, infrastructure adapters |
+
+**Current gaps (planned Phases 4–8):**
+
+- `QUEUE_SERVICE` is `InMemoryQueueService`; no BullMQ adapter or worker consumer yet.
+- `presentation/` is a placeholder — no webhook/dashboard/simulator controllers.
+- Orchestrator returns `ConversationStatus` but does not yet persist it via `ConversationRepository.updateStatus`.
+- Seed does not yet include knowledge documents/embeddings (T-7.1) or Mongo samples (T-7.2).
+- Coverage gate (≥ 75%) is Phase 8 (T-8.3).
+- IVFFlat index lives in migration SQL, not `schema.prisma` (documented in DECISIONS.md §24).
+
+---
+
 ## Implementation Order
 
 ```text

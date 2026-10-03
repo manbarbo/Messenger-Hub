@@ -4,6 +4,8 @@
 
 This document defines the data model, API contracts, AI pipeline, and frontend views for the MessengerHub AI clinic assistant.
 
+> **Implementation status (2026-10-02):** Phases 1–3 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration). Sections describing webhooks, workers, HTTP API contracts, dashboard views, and full seed data are the **target design** for Phases 4–8 and are not yet exposed at runtime. Where implementation details differ from an earlier draft of this document, the code is authoritative and the notes below reflect the current code.
+
 ---
 
 # 1. Data Model
@@ -210,7 +212,7 @@ model KnowledgeDocument {
   title       String
   content     String
   category    String
-  embedding   Unsupported("vector(768)")
+  embedding   Unsupported("vector(768)")? // nullable until T-7.1 seeds embeddings
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -218,12 +220,11 @@ model KnowledgeDocument {
 
   @@index([clinicId])
   @@index([category])
-  @@index("embedding", ops: CosineDistance)
   @@map("knowledge_documents")
 }
 ```
 
-Generated SQL:
+Generated SQL (from `apps/api/prisma/migrations/*/migration.sql`):
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -241,14 +242,15 @@ CREATE TABLE knowledge_documents (
 
 CREATE INDEX idx_knowledge_docs_clinic_id ON knowledge_documents(clinic_id);
 CREATE INDEX idx_knowledge_docs_category ON knowledge_documents(category);
-CREATE INDEX idx_knowledge_docs_embedding ON knowledge_documents USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX "idx_knowledge_docs_embedding" ON "knowledge_documents" USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 ```
 
-#### Notes
+#### Notes (implementation)
 
-- `embedding` uses pgvector with 768 dimensions (Google `text-embedding-004`). Dimension size adapts to the chosen embedding model.
+- `embedding` uses pgvector with 768 dimensions (Google `text-embedding-004`). The column is **nullable** until Phase 7 seeds documents with embeddings (`T-7.1`).
+- The IVFFlat cosine index (`lists = 100`) is created in the **migration SQL**, not declared in `schema.prisma`. If you regenerate migrations from the schema, re-apply this index manually (or use a raw SQL migration) to avoid drift.
+- Semantic search uses cosine distance: `ORDER BY embedding <=> $1 LIMIT 5`, with results filtered by `1 - (embedding <=> $vec) > 0.7` (`RAG_SIMILARITY_THRESHOLD`).
 - The IVFFlat index is suitable for up to ~1M rows. For larger datasets, switch to HNSW.
-- Semantic search uses cosine distance: `ORDER BY embedding <=> $1 LIMIT 5`.
 
 ---
 
@@ -273,8 +275,9 @@ interface ConversationDocument {
 #### Indexes
 
 ```javascript
+// apps/api/src/infrastructure/database/mongo-indexes.ts
 db.conversations.createIndex({ clinicId: 1, status: 1 });
-db.conversations.createIndex({ patientPhone: 1 });
+db.conversations.createIndex({ clinicId: 1, patientPhone: 1 });
 db.conversations.createIndex({ lastMessageAt: -1 });
 ```
 
@@ -296,8 +299,8 @@ interface MessageDocument {
 #### Indexes
 
 ```javascript
-db.messages.createIndex({ conversationId: 1, createdAt: 1 });
 db.messages.createIndex({ messageId: 1 }, { unique: true, sparse: true });
+db.messages.createIndex({ conversationId: 1, createdAt: 1 });
 db.messages.createIndex({ clinicId: 1, createdAt: -1 });
 ```
 
@@ -340,11 +343,13 @@ db.ai_traces.createIndex({ finalStatus: 1 });
 | Operation | PostgreSQL (Transactional) | MongoDB (Eventual) | Consistency Strategy |
 |-----------|---------------------------|--------------------|--------------------|
 | New message received | — | Insert message | MongoDB is the source of truth for chat history |
-| Appointment booked | INSERT appointment, UPDATE slot.is_booked = true | Update conversation status | PostgreSQL transaction commits first; MongoDB update follows. If MongoDB update fails, a background reconciliation job retries. |
+| Appointment booked | INSERT appointment, UPDATE slot.is_booked = true | Update conversation status *(pending Phase 4/5 wiring)* | PostgreSQL transaction commits first; MongoDB update follows. If MongoDB update fails, a background reconciliation job retries. |
 | Conversation escalated | — | Update conversation status + insert AI trace | Both writes to MongoDB; no cross-DB transaction needed. |
 | Knowledge query (RAG) | SELECT with pgvector cosine search | — | Single DB read, no consistency issue. |
 
 **Rule:** When an operation touches both databases, PostgreSQL commits first (it holds the source of truth for appointments). MongoDB updates are retried on failure. The system accepts eventual consistency for conversation state.
+
+**Implementation note (current):** `AIOrchestratorService.processTurn` returns the resulting `ConversationStatus` and persists an `AITrace`, but does **not** yet call `ConversationRepository.updateStatus`. Persisting conversation status after each AI turn is planned with the worker/webhook flow (Phases 4–5). The `ConversationEscalatedEvent` domain event is defined but not yet published at runtime.
 
 ---
 
@@ -560,8 +565,8 @@ Patient Message
 
 - **Purpose:** Mark conversation for human attention.
 - **Validation:** `motivo` must be a non-empty string.
-- **Effect:** Updates conversation status to `escalated` in MongoDB.
-- **Returns:** Acknowledgment message.
+- **Effect (target):** Updates conversation status to `escalated` in MongoDB.
+- **Effect (current):** The orchestrator returns `ConversationStatus.ESCALATED` with a fixed acknowledgment message and records the trace. Persisting status in MongoDB happens when the worker/webhook path is wired (Phase 4/5).
 
 ## Prompt Construction
 
@@ -590,6 +595,8 @@ Current Message:
 ---
 
 # 5. API Contracts
+
+> **Status:** Target contracts for Phase 5. Controllers are not implemented yet (`apps/api/src/presentation/` is a placeholder). Until then the NestJS app only exposes bootstrap health routes.
 
 ## Base URL
 
@@ -811,19 +818,21 @@ Behavior:
 
 # 7. Error Catalog
 
-| Error | HTTP Code | When |
-|-------|-----------|------|
-| `SlotAlreadyBookedError` | 409 | Slot was booked between availability check and booking attempt |
-| `SlotNotFoundError` | 404 | Requested slot does not exist |
-| `ClinicNotFoundError` | 404 | Clinic ID or name does not match any clinic |
-| `DoctorNotFoundError` | 404 | Doctor ID does not match any doctor |
-| `InvalidTimezoneError` | 400 | Date/time cannot be interpreted in Colombia timezone |
-| `PastDateError` | 400 | Attempted to book a slot in the past |
-| `DuplicateMessageError` | 200 | message_id already processed (not an error, returns existing conversation) |
-| `LLMProviderError` | 502 | LLM API timeout or failure |
-| `LLMIterationLimitError` | 500 | Tool calling exceeded max iterations (auto-escalates) |
-| `ValidationError` | 400 | Missing or invalid request fields |
-| `KnowledgeBaseEmptyError` | 500 | No documents found for the clinic (configuration issue) |
+> **Status:** Error classes below are mostly defined in `apps/api/src/domain/errors/`. HTTP mapping is planned for Phase 5.2 (`presentation/filters` + pipes). Not every catalog entry currently exists as a domain error class.
+
+| Error | HTTP Code | When | Domain class status |
+|-------|-----------|------|---------------------|
+| `SlotAlreadyBookedError` | 409 | Slot was booked between availability check and booking attempt | Implemented |
+| `SlotNotFoundError` | 404 | Requested slot does not exist | Implemented |
+| `ClinicNotFoundError` | 404 | Clinic ID or name does not match any clinic | Implemented |
+| `DoctorNotFoundError` | 404 | Doctor ID does not match any doctor | Not yet implemented (planned) |
+| `InvalidTimezoneError` | 400 | Date/time cannot be interpreted in Colombia timezone | Not yet implemented (planned; current code uses fixed UTC-5 helpers) |
+| `PastDateError` | 400 | Attempted to book a slot in the past | Implemented |
+| `DuplicateMessageError` | 200 | message_id already processed (not an error, returns existing conversation) | Handled as `duplicate: true` in command result, not a thrown error |
+| `LLMProviderError` | 502 | LLM API timeout or failure | Implemented |
+| `LLMIterationLimitError` | 500 | Tool calling exceeded max iterations (auto-escalates) | Class implemented/tested; orchestrator currently force-escalates without throwing this error |
+| `ValidationError` | 400 | Missing or invalid request fields | Implemented |
+| `KnowledgeBaseEmptyError` | 500 | No documents found for the clinic (configuration issue) | Not yet implemented (planned) |
 
 Infrastructure errors (database connection, queue failures) are caught and mapped to 500 responses. The raw error is logged but never exposed to the client.
 

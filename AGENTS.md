@@ -74,12 +74,12 @@ This is a strict workflow constraint. Do not write, edit, or refactor code witho
 
 ```text
 1. Identify the task (new feature, bug fix, refactor)
-2. Check plans/Backlog/ for an existing task plan
-   ├── If found → move to plans/InProgress/, review acceptance criteria
-   └── If not found → create a new task plan in plans/Backlog/, then move to plans/InProgress/
+2. Check plans/backlog/ for an existing task plan
+   ├── If found → move to plans/inProgress/, review acceptance criteria
+   └── If not found → create a new task plan in plans/backlog/, then move to plans/inProgress/
 3. Implement the code changes
 4. Verify against the plan's acceptance criteria
-5. Move the plan to plans/Completed/
+5. Move the plan to plans/completed/
 ```
 
 ### Plan File Structure
@@ -97,10 +97,10 @@ Every task plan must contain:
 
 ### Rules
 
-- Never modify code without a plan in `plans/InProgress/` or `plans/Backlog/`.
+- Never modify code without a plan in `plans/inProgress/` or `plans/backlog/`.
 - If the scope of a task changes during implementation, update the plan first.
 - A task is only complete when all acceptance criteria are checked and verification passes.
-- Completed plans move to `plans/Completed/` with a completion date.
+- Completed plans move to `plans/completed/` with a completion date.
 
 ---
 
@@ -132,27 +132,29 @@ MessengerHub/
 │   └── opencode.json            # OpenCode agents and commands config
 ├── apps/
 │   ├── api/                        # NestJS backend (API + Worker)
+│   │   ├── prisma/                 # Schema, migrations, seed
+│   │   ├── scripts/                # Operational scripts (e.g., ensure-mongo-indexes.ts)
 │   │   └── src/
 │   │       ├── domain/             # Entities, value objects, enums, repository interfaces, AI tool interfaces
 │   │       ├── application/        # Use cases, CQRS command/query handlers, DTOs, LLM orchestration
 │   │       ├── infrastructure/     # Postgres (pgvector) & Mongo adapters, LLM clients, queue adapters
-│   │       └── presentation/       # Express controllers (webhook, dashboard API)
+│   │       └── presentation/       # Placeholder — Express controllers (webhook, dashboard API) arrive in Phase 5
 │   └── web/                        # Angular frontend (Dashboard & Simulator)
 │       └── src/
 │           ├── app/
-│           │   ├── conversations/  # Conversation inbox and detail views
-│           │   ├── simulator/      # Patient message simulator
-│           │   ├── shared/         # Reusable components, services, interceptors
-│           │   └── core/           # Guards, models, API service
+│           │   ├── conversations/  # Conversation inbox and detail views (Phase 6)
+│           │   ├── simulator/      # Patient message simulator (Phase 6)
+│           │   ├── shared/         # Reusable components, services, interceptors (Phase 6)
+│           │   └── core/           # Guards, models, API service (Phase 6)
 │           ├── assets/
 │           └── environments/
-├── docs/                           # Seed data (knowledge base documents)
+├── docs/                           # Placeholder — knowledge base seed documents (Phase 7)
 ├── plans/                          # Task plans
 │   ├── backlog/                    # Pending tasks
 │   ├── inProgress/                 # Active tasks
 │   ├── completed/                  # Finished tasks
 │   └── master_plan.md              # High-level implementation overview
-├── scripts/                        # Database seeding and setup scripts
+├── AGENTS.md
 ├── DECISIONS.md
 ├── DESIGN.md
 ├── README.md

@@ -4,6 +4,8 @@
 
 This document captures the key architectural and technical decisions made during the design and implementation of MessengerHub, along with their context, rationale, and trade-offs.
 
+> **Implementation status (2026-10-02):** Phases 1–3 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration). Decisions below marked with *(implemented)* reflect choices already visible in code; others describe target design for Phases 4–8.
+
 ---
 
 # 1. Backend Framework: NestJS over Plain Node.js/Express
@@ -210,6 +212,8 @@ interface LLMChatResult {
   usage: { inputTokens: number; outputTokens: number };
   model: string;
   latencyMs: number;
+  costUsd?: number;
+  finishReason?: string;
 }
 ```
 
@@ -234,13 +238,20 @@ The OpenAI SDK reads `LLM_BASE_URL` to route requests to Gemini. The model name,
 
 # 7. Asynchronous Processing: Queue + Worker Pattern
 
-**Status:** Accepted
+**Status:** Accepted — target design for Phase 4 (queue binding currently in-memory)
 
 **Context:** The webhook endpoint must respond fast (< 200ms). LLM processing takes 5–30 seconds (depending on tool calls and iterations). Blocking the HTTP response for LLM latency is unacceptable.
 
 **Decision:** Use a queue (SQS in production, BullMQ in development) to decouple webhook reception from LLM processing.
 
-**Flow:**
+**Implementation status:**
+
+- `QUEUE_SERVICE` is bound to `InMemoryQueueService` (`infrastructure/queue/in-memory-queue.service.ts`) in `InfrastructureModule`.
+- `ProcessIncomingMessageHandler` already calls `queueService.push(job)` after inserting the message.
+- **No worker consumes the queue yet** — `AIOrchestratorService.processTurn` exists but is not wired to a BullMQ consumer.
+- Redis is provisioned in `docker-compose.yml` and `bullmq` is a dependency; the BullMQ adapter lands in T-4.1.
+
+**Flow (target):**
 
 ```text
 Webhook Request
@@ -277,11 +288,13 @@ Worker (separate process):
 - BullMQ runs on Redis, which is easy to spin up in Docker Compose.
 - Same queue semantics (jobs, retries, delays) without AWS dependency.
 - Switching between BullMQ and SQS is an infrastructure adapter swap.
+- Until T-4.1, the adapter is an in-memory implementation of the same `QueueService` interface so application code and tests do not change when BullMQ arrives.
 
 **Trade-offs:**
 
 - Two processes to run locally (API + Worker).
 - Message ordering is not guaranteed (SQS FIFO is available but adds complexity). Acceptable because conversations are naturally sequential per phone number.
+- In-memory queue loses jobs on process restart — acceptable for development only.
 
 ---
 
@@ -377,9 +390,10 @@ const ConsultarDisponibilidadSchema = z.object({
 **Implementation:**
 
 - All database timestamps (`created_at`, `start_time`, `end_time`) are stored in UTC with `TIMESTAMPTZ`.
-- When the LLM needs to interpret "mañana", the system prompt includes the current date/time in Colombia: `"Current date and time in Colombia: 2026-10-05 22:40 (UTC-5)"`.
-- The LLM translates "mañana en la tarde" to a concrete date (`2026-10-07`) and time range, which is then validated by the domain layer.
+- When the LLM needs to interpret "mañana", the system prompt includes the current date/time in Colombia: `"Fecha y hora actual en Colombia: YYYY-MM-DD HH:mm (UTC-5)"` (built by `PromptBuilder` via `colombia-time.ts`).
+- The LLM translates "mañana en la tarde" to a concrete date (`2026-10-07`) and time range, which is then validated by the domain layer (`ToolValidator` + `parseColombiaDateTime`).
 - Slot availability queries filter by UTC timestamps but display results in Colombia time to the patient.
+- Implementation detail: helpers use a fixed UTC-5 offset (Colombia has no DST). See decision §23.
 
 **Why not store local times:**
 
@@ -503,16 +517,30 @@ interface LLMService {
   chat(params: LLMChatParams): Promise<LLMChatResult>;
 }
 
-// Mock for testing
+// Mock for testing (apps/api/src/infrastructure/llm/mock-llm.service.ts)
 class MockLLMService implements LLMService {
   private responses: LLMChatResult[] = [];
-  
-  setResponse(response: LLMChatResult): void {
-    this.responses.push(response);
+  readonly calls: LLMChatParams[] = [];
+
+  setResponses(responses: LLMChatResult[]): void {
+    this.responses.push(...responses);
   }
-  
+
+  get callCount(): number {
+    return this.calls.length;
+  }
+
   async chat(params: LLMChatParams): Promise<LLMChatResult> {
-    return this.responses.shift() || { content: 'Default', toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 }, model: 'mock', latencyMs: 0 };
+    this.calls.push(params);
+    return (
+      this.responses.shift() ?? {
+        content: 'Default',
+        toolCalls: [],
+        usage: { inputTokens: 0, outputTokens: 0 },
+        model: 'mock',
+        latencyMs: 0,
+      }
+    );
   }
 }
 ```
@@ -611,26 +639,32 @@ class MockLLMService implements LLMService {
 
 # 20. Seed Data Strategy
 
-**Status:** Accepted
+**Status:** Accepted — target design for Phase 7 (current seed is partial)
 
 **Context:** The project requires a seed with 6–10 clinic documents, 2 locations, at least 3 specialties, and 2 weeks of availability schedules.
 
 **Decision:** Use Prisma seed scripts for PostgreSQL data and a separate MongoDB seed script for conversation examples.
 
-**Seed contents:**
+**Implementation status (current `apps/api/prisma/seed.ts`):**
+
+- Idempotent (skips if clinics already exist).
+- Seeds **1 clinic** (`Clínica Central Cali`), **1 doctor** (`Dra. Laura Gómez`, Medicina General), and **5 days of availability slots** (8 slots/day, 08:00–11:30 America/Bogota, weekdays only).
+- **Does not yet seed** knowledge documents, embeddings, multi-clinic data, or MongoDB samples — those are T-7.1 / T-7.2.
+
+**Target seed contents (Phase 7):**
 
 - **2 clinics:** Clínica Norte (Cali), Clínica Sur (Bogotá)
 - **3+ specialties:** Medicina General, Dermatología, Cardiología, Pediatría
 - **6+ doctors:** Distributed across clinics and specialties
 - **2 weeks of slots:** 8 AM – 6 PM, 30-minute intervals, weekdays only
-- **8 knowledge documents:** Horarios, sedes, preparación de exámenes, políticas de cancelación, servicios, contacto
+- **8 knowledge documents:** Horarios, sedes, preparación de exámenes, políticas de cancelación, servicios, contacto — embedded with `text-embedding-004` (768 dims)
 - **Sample conversations:** 2–3 conversations with AI traces for dashboard testing
 
 ---
 
 # 21. Global InfrastructureModule for Cross-Layer DI Tokens
 
-**Status:** Accepted
+**Status:** Accepted *(implemented — FIX-application-module-di-tokens)*
 
 **Context:** After AppModule wiring (T-3.2), the API failed at bootstrap with `UnknownDependenciesException`: `CreateAppointmentHandler` could not resolve `Symbol(SlotRepository)` inside `ApplicationModule`. Handlers in the application layer inject domain tokens (`SLOT_REPOSITORY`, `APPOINTMENT_REPOSITORY`, `CONVERSATION_REPOSITORY`, `EVENT_PUBLISHER`, `QUEUE_SERVICE`, etc.) that are provided by `InfrastructureModule`. NestJS only resolves a token from a module's own providers, modules it imports that export the token, or global modules. `ApplicationModule` imports only `CqrsModule`, and `InfrastructureModule` was not global — so production DI failed. Unit tests passed only because `application.module.spec.ts` used a `@Global()` mock module that provided all tokens, masking the wiring gap.
 
@@ -652,25 +686,163 @@ class MockLLMService implements LLMService {
 **Trade-offs:**
 
 - Global modules make exported tokens visible everywhere once imported in `AppModule`, which can hide a missing explicit import. Mitigated by regression tests asserting ApplicationModule handler resolution against `InfrastructureModule`.
-- Future application-layer services that inject `LLM_SERVICE` need the same treatment for `LlmModule` (or an explicit import) when T-3.4 registers the AI orchestrator.
+- `LLM_SERVICE` is provided by `LlmModule` (imported by `AIModule`, exported by `ApplicationModule`); `EMBEDDING_SERVICE` is global via `EmbeddingModule`. Application services that need the orchestrator use `AIOrchestratorService` from `AIModule` rather than injecting `LLM_SERVICE` directly.
 
 ---
 
-# 22. Trade-offs Summary
+# 22. Domain Entities as Interfaces + Pure Functions
+
+**Status:** Accepted *(implemented in Phase 1)*
+
+**Context:** Domain entities need business invariants (status transitions, slot range checks, conversation transitions) without coupling to NestJS, Prisma, or MongoDB.
+
+**Decision:** Model domain entities as TypeScript **interfaces** (readonly data) plus **pure functions** for validation/transitions, instead of stateful domain classes.
+
+**Examples:**
+
+- `appointment.entity.ts`: `canCancelAppointment`, `assertAppointmentTransition`, `cancelAppointment`
+- `conversation.entity.ts`: `isTerminalConversation`, `assertConversationTransition`, `transitionConversation`
+- `slot.entity.ts`: `isValidSlotRange`, `assertValidSlotRange`, `isAvailableSlot`
+- Enums own transition tables: `APPOINTMENT_TRANSITIONS`, `CONVERSATION_TRANSITIONS`
+
+**Rationale:**
+
+- **Testability** — Pure functions are trivial to unit test without DI containers.
+- **Immutability** — Readonly interfaces prevent accidental mutation of persisted models.
+- **Simplicity** — No hidden state; handlers compose entities + repositories explicitly.
+- **Clean Architecture fit** — Domain stays framework-free (no NestJS decorators on entities).
+
+**Trade-offs:**
+
+- Less encapsulation than OOP entities with private state; invariants are enforced by calling the right functions, not by object methods.
+- Newcomers must learn the function-per-entity convention.
+
+---
+
+# 23. Fixed UTC-5 Offset for Colombia Timezone Helpers
+
+**Status:** Accepted *(implemented in Phase 3)*
+
+**Context:** Operations are in Colombia (`America/Bogota`). Prompts, date validation, and slot parsing must interpret patient-relative dates ("mañana") in local time. Colombia has **no DST**.
+
+**Decision:** Implement timezone helpers in `application/llm/colombia-time.ts` using a **fixed UTC-5 offset** (`COLOMBIA_UTC_OFFSET_HOURS = 5`) and UTC Date math, rather than `Intl.DateTimeFormat` with `timeZone: 'America/Bogota'`.
+
+**Helpers:** `formatColombiaDate`, `formatColombiaDateTime`, `isValidCalendarDate`, `parseColombiaDate`, `parseColombiaDateTime`, `isColombiaDateInPast`, `isColombiaDateTimeInPast`.
+
+**Rationale:**
+
+- **Predictable parsing** — `parseColombiaDateTime("2026-10-07", "15:00")` produces a deterministic UTC instant without locale/ICU edge cases.
+- **No DST in Colombia** — Fixed offset is correct today; no seasonal surprises.
+- **Prompt consistency** — The same helper formats `"Fecha y hora actual en Colombia: ... (UTC-5)"` in the system prompt and validates tool arguments.
+- **Testability** — Pure functions accept `now: Date` for deterministic tests.
+
+**Trade-offs:**
+
+- If the system expands to countries with DST, this helper must switch to `Intl.DateTimeFormat` with IANA time zones (e.g., `America/Bogota` remains safe; others may not).
+- The constant mirrors `Clinic.timezone` default in Prisma but does not read it at runtime — clinic-level timezone overrides are not supported yet.
+
+---
+
+# 24. pgvector IVFFlat Index Managed in Migration SQL
+
+**Status:** Accepted *(implemented in Phase 1 migration)*
+
+**Context:** RAG search needs a cosine-distance index on `knowledge_documents.embedding`. Prisma schema support for pgvector indexes is limited for `Unsupported("vector(768)")` columns.
+
+**Decision:** Create the IVFFlat index in the **raw migration SQL**, not in `schema.prisma`.
+
+**Implementation:**
+
+```sql
+CREATE INDEX "idx_knowledge_docs_embedding"
+  ON "knowledge_documents"
+  USING ivfflat (embedding vector_cosine_ops)
+  WITH (lists = 100);
+```
+
+(`apps/api/prisma/migrations/20261003001317_init/migration.sql`)
+
+**Rationale:**
+
+- Prisma does not model `Unsupported("vector(...))` indexes declaratively; raw SQL is the reliable path.
+- The index matches the documented design (cosine ops, lists=100).
+
+**Trade-offs / drift risk:**
+
+- Regenerating migrations from `schema.prisma` alone can **drop** this index if not re-applied manually.
+- Documented in DESIGN.md; future schema work must keep the raw SQL migration in sync.
+
+---
+
+# 25. Tool Definitions Split Across Definition, Schema, and Validator
+
+**Status:** Accepted *(implemented in Phase 3)*
+
+**Context:** Tool calling requires three concerns: what the LLM sees, what arguments are structurally valid, and what arguments satisfy domain rules.
+
+**Decision:** Separate files under `application/llm/`:
+
+| File | Responsibility |
+|------|----------------|
+| `tool-definitions.ts` | OpenAI-compatible tool JSON (`TOOL_DEFINITIONS`) passed to the LLM |
+| `tool-schemas.ts` | Zod schemas (`TOOL_SCHEMAS`) for structural validation |
+| `tool-validator.ts` | `ToolValidator`: Zod → domain rules → parsed result (`clinicId`, `slotId`, etc.) |
+| `prompt-builder.ts` | System prompt with Colombia datetime + tool list |
+| `ai-orchestrator.service.ts` | Loop, iteration limit, escalation, trace persistence |
+
+**Rationale:**
+
+- **Open/Closed** — Adding a tool means updating definitions + schema + validator cases without rewriting the orchestrator.
+- **Untrusted input** — LLM arguments always pass Zod before domain checks; invalid results are returned to the LLM as tool results (not system errors).
+- **Testability** — Each layer has dedicated specs (`tool-definitions.spec.ts`, `tool-schemas.spec.ts`, `tool-validator.spec.ts`, `ai-orchestrator.service.spec.ts`).
+
+**Trade-offs:**
+
+- Slight duplication between definition JSON and Zod schemas; mitigated by keeping them adjacent and tested.
+
+---
+
+# 26. MockLLMService for Deterministic Orchestration Tests
+
+**Status:** Accepted *(implemented in Phase 3)*
+
+**Context:** Orchestration tests must verify tool loops, validation feedback, and escalation without hitting Gemini.
+
+**Decision:** Provide `MockLLMService` (`infrastructure/llm/mock-llm.service.ts`) implementing `LLMService`, with:
+
+- `setResponses(responses: LLMChatResult[])` — queue of canned results
+- `calls` / `callCount` — inspect prompts/tools sent to the LLM
+- Default empty response when queue is empty
+
+**Rationale:**
+
+- Same interface as `GeminiLLMService` — orchestrator code paths are identical in tests and production.
+- Tests can assert iteration count (`MAX_TOOL_ITERATIONS = 5`), tool definitions passed, and escalation behavior.
+
+**Trade-offs:**
+
+- Mock fidelity depends on tests constructing realistic `LLMChatResult` objects; contract tests for `GeminiLLMService` still need separate coverage (done via unit specs of the adapter).
+
+---
+
+# 27. Trade-offs Summary
 
 | Decision | Chose | Instead Of | Cost |
 |----------|-------|------------|------|
 | Dual DB (PG + MongoDB) | PostgreSQL + MongoDB | Single PostgreSQL | Cross-DB consistency complexity |
 | pgvector | pgvector | Qdrant/Pinecone | Less optimized at massive scale |
 | Direct LLM SDK | Gemini via OpenAI-compatible endpoint | LangChain | Manual tool calling loop |
-| Queue + Worker | SQS/BullMQ | Inline processing | Two processes to run |
+| Queue + Worker | SQS/BullMQ (InMemory until T-4.1) | Inline processing | Two processes to run |
 | Shared multi-tenant | Shared DB + RLS | DB-per-tenant | Less isolation |
 | ECS Fargate | Fargate | Lambda | Slightly higher base cost |
 | Angular | Angular | Vue/React | More boilerplate |
+| Domain style | Interfaces + pure functions | Stateful domain classes | Call sites must invoke transition helpers |
+| Colombia time | Fixed UTC-5 offset helpers | Intl timeZone API | Must revisit if multi-country DST |
+| pgvector index | Raw migration SQL | schema.prisma index | Drift risk if migrations regenerated |
 
 ---
 
-# 23. What I Would Do Differently with More Time
+# 28. What I Would Do Differently with More Time
 
 - **Response quality evaluation** — Automated evaluation of LLM responses (correctness, helpfulness, hallucination detection) using a separate evaluation pipeline.
 - **Observability** — Distributed tracing (X-Ray) across API → Queue → Worker → LLM. Custom CloudWatch dashboards for cost per conversation, tool call success rates, and escalation rates.
@@ -682,7 +854,7 @@ class MockLLMService implements LLMService {
 
 ---
 
-# 24. Use of AI
+# 29. Use of AI
 
 **Where AI assisted:**
 
