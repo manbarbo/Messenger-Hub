@@ -67,6 +67,8 @@ Implemented pipeline components:
 > **Troubleshooting — jobs stuck in `waiting`:** Bull Board shows `waiting` when **no worker process** is attached to the queue (or Redis is unreachable). Confirm worker logs show `MessengerHub worker started` and `Worker listening on queue`. Verify `REDIS_HOST` / `REDIS_PORT` (and DB/LLM env) are available to both API and worker. Without the worker, Gemini/RAG never runs — only the webhook enqueue path executes.
 >
 > **Troubleshooting — worker `EADDRINUSE :::3000`:** The worker process must **not** bind an HTTP port. This error means Nest CLI ran the **API** entry (`dist/main.js`) instead of `dist/worker-main.js`. Cause: `entryFile` must sit at the **root** of `apps/api/nest-cli.worker.json` (not under `compilerOptions` — Nest CLI ignores nested `entryFile` and defaults to `main`). Check that `entryFile: "worker-main"` is top-level and that `pnpm --filter api build:worker` emits `dist/worker-main.js`.
+>
+> **Troubleshooting — `UnknownDependenciesException` in the worker:** Nest DI failed to resolve a constructor dependency (often shown as `[Function: Object]`). For **concrete injectable classes** injected by type (no `@Inject` token), use a **value** import, not `import type` — type-only imports are erased and break `emitDecoratorMetadata`. Interfaces and `@Inject(Symbol)` deps may remain type-only. Example fix in `MessageProcessorService`: `import { AIOrchestratorService } from '...'` (not `import type`).
 
 ## Tech Stack
 

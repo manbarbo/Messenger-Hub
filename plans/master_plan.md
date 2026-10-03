@@ -90,6 +90,8 @@ FIX-dev-start-worker-process: `pnpm dev` now starts **api + worker + web** via `
 
 Follow-up: worker Nest CLI config fixed — `entryFile: "worker-main"` must be at the **root** of `apps/api/nest-cli.worker.json` (not under `compilerOptions`). `deleteOutDir: false` on both nest-cli configs avoids concurrent webpack builds overwriting each other’s `dist/*.js` bundles. Verified: `build:worker` emits `dist/worker-main.js` with `WorkerModule`; worker does not listen on port 3000.
 
+Follow-up: worker DI fix — `MessageProcessorService` value-imports `AIOrchestratorService` (was `import type`, which erased Nest `design:paramtypes` and caused `UnknownDependenciesException` with `[Function: Object]` at constructor index 1). See `plans/completed/FIX-message-processor-import-type.md`.
+
 ---
 
 ## Implementation Order

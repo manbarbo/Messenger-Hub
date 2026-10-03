@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { AIOrchestratorService } from '../llm/ai-orchestrator.service';
+import { AIOrchestratorService } from '../llm/ai-orchestrator.service';
 import type { QueueJob } from '@domain/value-objects/queue-job.vo';
 import type { ConversationRepository, MessageRepository } from '@domain/repositories';
 import { CONVERSATION_REPOSITORY, MESSAGE_REPOSITORY } from '@domain/repositories';
