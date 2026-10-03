@@ -1,6 +1,8 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { AppApiError } from './app-api.error';
+import { LoggerService } from './logger.service';
 import type { ApiErrorPayload } from './models/api.model';
 
 function extractMessage(body: unknown): string {
@@ -47,10 +49,18 @@ export function toApiErrorPayload(error: HttpErrorResponse): ApiErrorPayload {
   };
 }
 
-export const errorInterceptor: HttpInterceptorFn = (req, next) =>
-  next(req).pipe(
+export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const logger = inject(LoggerService);
+
+  return next(req).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse) {
+        logger.error('API request failed', 'APIClient', {
+          method: req.method,
+          path: req.url,
+          status: error.status,
+          message: error.error?.message || error.message,
+        });
         return throwError(() => new AppApiError(toApiErrorPayload(error)));
       }
 
@@ -64,3 +74,4 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) =>
       );
     }),
   );
+};

@@ -101,7 +101,7 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 6 | Frontend (Angular dashboard + simulator) | Completed |
 | 7 | Seed data (PG knowledge base + Mongo samples) | Completed |
 | 8 | Testing & coverage gate (≥ 75%) | Completed |
-| 9 | Logging (backend Winston + frontend error tracking) | Backlog |
+| 9 | Logging (backend Winston + frontend error tracking) | Completed |
 
 See [plans/master_plan.md](./plans/master_plan.md) for the full task breakdown.
 
