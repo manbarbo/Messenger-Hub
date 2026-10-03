@@ -58,7 +58,7 @@ Implemented pipeline components:
 #### Seed Data
 
 - Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, knowledge documents + embeddings) — **implemented (T-7.1)**.
-- MongoDB seed with sample conversations and traces — pending (T-7.2).
+- MongoDB seed with sample conversations and AI traces — **implemented (T-7.2)**.
 
 > **Current async path:** `POST /webhooks/messages` validates and enqueues via `ProcessIncomingMessageCommand`; `QUEUE_SERVICE` is `BullMQQueueService` (`message-processing` + DLQ). Run the API (`pnpm --filter api start:dev`) and worker (`pnpm --filter api start:worker:dev`) as separate processes. Set `DEFAULT_CLINIC_ID` in `apps/api/.env` (or send `clinic_id` in the webhook body).
 
@@ -99,7 +99,7 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 4 | Async processing (queue, worker, webhook) | Completed |
 | 5 | API layer (controllers, routes, error handling) | Completed |
 | 6 | Frontend (Angular dashboard + simulator) | Backlog |
-| 7 | Seed data (PG knowledge base complete; Mongo samples pending) | In Progress |
+| 7 | Seed data (PG knowledge base + Mongo samples) | Completed |
 | 8 | Testing & coverage gate (≥ 75%) | Backlog |
 
 See [plans/master_plan.md](./plans/master_plan.md) for the full task breakdown.
@@ -115,7 +115,7 @@ MessengerHub/
 ├── apps/
 │   ├── api/                     # NestJS backend (API + Worker)
 │   │   ├── prisma/              # Schema, migrations, full PG seed (clinics/doctors/slots/knowledge)
-│   │   ├── scripts/             # Operational scripts (e.g., ensure-mongo-indexes.ts)
+│   │   ├── scripts/             # Operational scripts (mongo indexes, Mongo sample seed)
 │   │   └── src/
 │   │       ├── domain/          # Entities, VOs, enums, repository/service interfaces, errors, events
 │   │       ├── application/     # CQRS handlers, DTOs, AI orchestration (LLM + RAG + tools)
@@ -175,14 +175,15 @@ _Make sure to add your `LLM_API_KEY` to `apps/api/.env`. The template includes `
 docker compose up -d
 ```
 
-4. Run PostgreSQL migrations and the full seed (2 clinics, 8 doctors, 2 weeks of slots, 12 knowledge documents with embeddings). Set `DEFAULT_CLINIC_ID` in `apps/api/.env` to a seeded clinic UUID printed by the seed script:
+4. Run PostgreSQL migrations and seeds (clinics/doctors/slots/knowledge in PG; sample conversations in Mongo). Set `DEFAULT_CLINIC_ID` in `apps/api/.env` to a seeded clinic UUID printed by the PG seed script:
 
 ```bash
 pnpm --filter api db:migrate
 pnpm --filter api db:seed
+pnpm --filter api seed:mongo
 ```
 
-Mongo sample conversations (T-7.2) come with the remaining Phase 7 work.
+`seed:mongo` looks up Clínica Norte / Clínica Sur clinic ids from PostgreSQL, then inserts 3 sample conversations (resolved_by_ai, appointment_booked, escalated) with messages and AI traces.
 
 Optionally ensure MongoDB indexes are present:
 

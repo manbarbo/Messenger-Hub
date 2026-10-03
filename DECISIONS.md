@@ -645,22 +645,23 @@ class MockLLMService implements LLMService {
 
 # 20. Seed Data Strategy
 
-**Status:** Accepted — PostgreSQL seed implemented (T-7.1); MongoDB sample seed still pending (T-7.2)
+**Status:** Accepted — PostgreSQL seed (T-7.1) and MongoDB sample seed (T-7.2) implemented
 
 **Context:** The project requires a seed with 6–10 clinic documents, 2 locations, at least 3 specialties, and 2 weeks of availability schedules.
 
 **Decision:** Use Prisma seed scripts for PostgreSQL data and a separate MongoDB seed script for conversation examples.
 
-**Implementation status (`apps/api/prisma/seed.ts`, 2026-10-03 — T-7.1):**
+**Implementation status (`apps/api/prisma/seed.ts` + `apps/api/scripts/seed-mongo.ts`):**
 
-- Idempotent: skips when both target clinics and ≥ 8 knowledge documents already exist. Set `SEED_RESET=true` to force a wipe + reseed.
-- Seeds **2 clinics:** Clínica Norte (Cali) and Clínica Sur (Bogotá), both `America/Bogota`.
-- Seeds **8 doctors** across 4 specialties (Medicina General, Dermatología, Cardiología, Pediatría).
-- Seeds **2 weeks of slots** (weekdays only, 8:00–17:30 Colombia at 30-minute intervals → 1600 rows for 8 doctors).
-- Seeds **12 knowledge documents** (6 categories × 2 clinics) with embeddings stored via raw SQL pgvector UPDATE.
-- Embedding model: `gemini-embedding-001` with explicit `dimensions: 768` (`text-embedding-004` is no longer available on Gemini). `GeminiEmbeddingService` also passes `dimensions` to the provider.
-- Seed data helpers live in `apps/api/prisma/seeds/` (clinic data, knowledge documents, slot generator, embedding client) with unit tests.
-- **Mongo sample conversations** remain T-7.2 (separate script).
+- **PostgreSQL (T-7.1):** Idempotent full seed — 2 clinics (Clínica Norte/Cali, Clínica Sur/Bogotá), 8 doctors, 4 specialties, 2-week weekday slots (8:00–17:30 Colombia, 30 min), 12 knowledge documents with `gemini-embedding-001` embeddings (768 dims). `SEED_RESET=true` forces wipe + reseed.
+- **MongoDB (T-7.2):** Independent script `pnpm --filter api seed:mongo` — looks up clinic UUIDs from PostgreSQL, ensures indexes, and seeds 3 sample conversations:
+  - `seed-conv-resolved-001` (`resolved_by_ai`, Clínica Norte) — horarios Q&A
+  - `seed-conv-booked-002` (`appointment_booked`, Clínica Sur) — pediatría booking
+  - `seed-conv-escalated-003` (`escalated`, Clínica Norte) — out-of-KB escalation
+  - 20 messages (user/assistant with WhatsApp `messageId`s) and 6 AI traces with tool calls (`buscar_conocimiento`, `consultar_disponibilidad`, `agendar_cita`, `escalar_a_humano`).
+  - Idempotent: skips when seed conversation ids already exist. `SEED_RESET=true` wipes conversations/messages/ai_traces and reseeds.
+  - Placeholder tokens like `{{tomorrow_colombia}}` are resolved at build time against Colombia (UTC-5) calendar dates.
+- Seed data helpers live in `apps/api/prisma/seeds/` and `apps/api/scripts/mongo-seeds/` with unit tests.
 
 **Target seed contents (Phase 7):**
 
@@ -669,7 +670,7 @@ class MockLLMService implements LLMService {
 - **6+ doctors:** Distributed across clinics and specialties
 - **2 weeks of slots:** 8 AM – 6 PM, 30-minute intervals, weekdays only
 - **8 knowledge documents:** Horarios, sedes, preparación de exámenes, políticas de cancelación, servicios, contacto — embedded with `gemini-embedding-001` (768 dims)
-- **Sample conversations:** 2–3 conversations with AI traces for dashboard testing
+- **Sample conversations:** 2–3 conversations with AI traces for dashboard testing — implemented as 3 conversations covering all terminal statuses
 
 ---
 

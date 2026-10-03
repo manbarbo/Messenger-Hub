@@ -24,7 +24,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "mongo:indexes": "tsx scripts/ensure-mongo-indexes.ts"
+    "mongo:indexes": "tsx scripts/ensure-mongo-indexes.ts",
+    "seed:mongo": "tsx scripts/seed-mongo.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",

@@ -132,8 +132,8 @@ MessengerHub/
 │   └── opencode.json            # OpenCode agents and commands config
 ├── apps/
 │   ├── api/                        # NestJS backend (API + Worker)
-│   │   ├── prisma/                 # Schema, migrations, seed
-│   │   ├── scripts/                # Operational scripts (e.g., ensure-mongo-indexes.ts)
+│   │   ├── prisma/                 # Schema, migrations, PG seed (clinics/doctors/slots/knowledge)
+│   │   ├── scripts/                # Operational scripts (mongo indexes, Mongo sample seed)
 │   │   └── src/
 │   │       ├── domain/             # Entities, value objects, enums, repository interfaces, AI tool interfaces
 │   │       ├── application/        # Use cases, CQRS command/query handlers, DTOs, LLM orchestration
@@ -536,7 +536,7 @@ appointments
 knowledge_documents (with pgvector embedding)
 ```
 
-Schema is defined in `apps/api/prisma/schema.prisma`. Migrations are generated with `prisma migrate dev`. Seed data is in `prisma/seed.ts`.
+Schema is defined in `apps/api/prisma/schema.prisma`. Migrations are generated with `prisma migrate dev`. PostgreSQL seed data is in `prisma/seed.ts` (helpers in `prisma/seeds/`). MongoDB sample seed is in `scripts/seed-mongo.ts` (helpers in `scripts/mongo-seeds/`).
 
 The `slots` table has a `UNIQUE(doctor_id, start_time)` constraint to prevent duplicate slots.
 

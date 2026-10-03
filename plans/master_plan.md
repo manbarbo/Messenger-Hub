@@ -28,7 +28,7 @@ Phases 1–3 are **Completed**. What exists in the codebase today:
 - Phase 4 (async processing) is complete: BullMQ queue, worker consumer, and `POST /webhooks/messages`.
 - Phase 5 is complete: dashboard/simulator controllers (T-5.1) + global `DomainExceptionFilter` (T-5.2). Request validation is Zod-based in controllers; class-validator pipe was not added (see T-5.2 plan notes).
 - Orchestrator returns `ConversationStatus`; worker persists it via `ConversationRepository.updateStatus` after `processTurn`.
-- PostgreSQL seed (T-7.1) is complete: 2 clinics, 8 doctors, 4 specialties, 2-week weekday slots, 12 knowledge documents with `gemini-embedding-001` (768 dims). Mongo sample seed (T-7.2) is still pending.
+- PostgreSQL seed (T-7.1) and MongoDB sample seed (T-7.2) are complete: 2 clinics, 8 doctors, 4 specialties, 2-week weekday slots, 12 knowledge documents with `gemini-embedding-001` (768 dims); 3 sample conversations (resolved_by_ai / appointment_booked / escalated) with 20 messages and 6 AI traces.
 - Coverage gate (≥ 75%) is Phase 8 (T-8.3).
 - IVFFlat index lives in migration SQL, not `schema.prisma` (documented in DECISIONS.md §24).
 
@@ -106,7 +106,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-6.3 | Frontend | Conversation Detail + AI Traces | Frontend | Completed | 3–4 |
 | T-6.4 | Frontend | Patient Simulator | Frontend | Completed | 1–2 |
 | T-7.1 | Seed Data | PostgreSQL Seed | Backend | Completed | 1–2 |
-| T-7.2 | Seed Data | MongoDB Seed | Backend | Backlog | 1 |
+| T-7.2 | Seed Data | MongoDB Seed | Backend | Completed | 1 |
 | T-8.1 | Testing | Backend Testing | Backend | Backlog | 3–4 |
 | T-8.2 | Testing | Frontend Testing | Frontend | Backlog | 2–3 |
 | T-8.3 | Testing | Coverage Verification | Full Stack | Backlog | 1 |

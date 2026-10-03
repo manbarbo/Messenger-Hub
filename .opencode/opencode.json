@@ -39,9 +39,9 @@
 
   "command": {
     "setup": {
-      "description": "Run full project setup (Docker + Prisma + seed)",
-      "template": "Execute the project setup sequence: 1) Run docker-compose up -d to start PostgreSQL + MongoDB, 2) Run npx prisma migrate dev to apply schema, 3) Run npx prisma db seed to populate data. Report progress after each step.",
-      "prompt": "Execute the project setup sequence: 1) Run docker-compose up -d to start PostgreSQL + MongoDB, 2) Run npx prisma migrate dev to apply schema, 3) Run npx prisma db seed to populate data. Report progress after each step."
+      "description": "Run full project setup (Docker + Prisma + seeds)",
+      "template": "Execute the project setup sequence: 1) Run docker-compose up -d to start PostgreSQL + MongoDB, 2) Run npx prisma migrate dev to apply schema, 3) Run pnpm --filter api db:seed to populate PostgreSQL (clinics/doctors/slots/knowledge), 4) Run pnpm --filter api seed:mongo to populate MongoDB sample conversations, 5) Set DEFAULT_CLINIC_ID in apps/api/.env to a clinic UUID printed by the PG seed. Report progress after each step.",
+      "prompt": "Execute the project setup sequence: 1) Run docker-compose up -d to start PostgreSQL + MongoDB, 2) Run npx prisma migrate dev to apply schema, 3) Run pnpm --filter api db:seed to populate PostgreSQL, 4) Run pnpm --filter api seed:mongo to populate MongoDB samples, 5) Remind the user to set DEFAULT_CLINIC_ID. Report progress after each step."
     },
     "test": {
       "description": "Run all tests and verify 75% coverage",
