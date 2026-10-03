@@ -26,7 +26,6 @@ import { MongoService } from './database/mongo.service';
 import { PrismaService } from './database/prisma.service';
 import { InfrastructureModule } from './infrastructure.module';
 import { EventEmitterEventPublisher } from './events/event-emitter-event-publisher';
-import { InMemoryQueueService } from './queue/in-memory-queue.service';
 import { PrismaAppointmentRepository } from './repositories/prisma-appointment.repository';
 import { PrismaClinicRepository } from './repositories/prisma-clinic.repository';
 import { PrismaDoctorRepository } from './repositories/prisma-doctor.repository';
@@ -61,8 +60,16 @@ const mockConfigService = {
     { provide: EMBEDDING_SERVICE, useValue: mockEmbedding },
     { provide: EventEmitter2, useValue: mockEventEmitter },
     { provide: ConfigService, useValue: mockConfigService },
+    { provide: QUEUE_SERVICE, useValue: { push: vi.fn() } },
   ],
-  exports: [PrismaService, MongoService, EMBEDDING_SERVICE, EventEmitter2, ConfigService],
+  exports: [
+    PrismaService,
+    MongoService,
+    EMBEDDING_SERVICE,
+    EventEmitter2,
+    ConfigService,
+    QUEUE_SERVICE,
+  ],
 })
 class MockInfrastructureDepsModule {}
 
@@ -89,10 +96,9 @@ describe('InfrastructureModule', () => {
     expect(moduleRef.get(AI_TRACE_REPOSITORY)).toBeInstanceOf(MongoAITraceRepository);
   });
 
-  it('binds EventPublisher and QueueService adapters', async () => {
+  it('binds EventPublisher adapter', async () => {
     const moduleRef = await createTestModule();
     expect(moduleRef.get(EVENT_PUBLISHER)).toBeInstanceOf(EventEmitterEventPublisher);
-    expect(moduleRef.get(QUEUE_SERVICE)).toBeInstanceOf(InMemoryQueueService);
   });
 
   it('exports all repository and service tokens for application layers', async () => {
@@ -107,7 +113,6 @@ describe('InfrastructureModule', () => {
       MESSAGE_REPOSITORY,
       AI_TRACE_REPOSITORY,
       EVENT_PUBLISHER,
-      QUEUE_SERVICE,
     ];
     for (const token of tokens) {
       expect(moduleRef.get(token)).toBeDefined();

@@ -60,7 +60,7 @@ Implemented pipeline components:
 - Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, knowledge documents + embeddings).
 - MongoDB seed with sample conversations and traces.
 
-> **Current queue binding:** `QUEUE_SERVICE` is bound to `InMemoryQueueService` until T-4.1 introduces the BullMQ adapter. Redis is already provisioned in `docker-compose.yml`.
+> **Current queue binding:** `QUEUE_SERVICE` is bound to `BullMQQueueService` via the global `QueueModule` (main queue `message-processing` + DLQ `message-processing-dlq`). Redis is provisioned in `docker-compose.yml`. The background worker that consumes jobs is still pending (T-4.2).
 
 ## Tech Stack
 
@@ -85,7 +85,7 @@ Implemented pipeline components:
 The backend implements Clean Architecture (Presentation → Application → Domain ← Infrastructure) principles to isolate the AI logic from business rules and persistence:
 
 - **Data Segregation**: PostgreSQL handles the core transactional domain (Clinics, Slots, Appointments, pgvector for RAG) where ACID properties and constraints are mandatory. MongoDB handles high-volume, flexible schema data (Chat history, AI execution traces).
-- **Asynchronous Processing (target design)**: Webhooks push events to a queue, processed by a background worker to handle LLM latency gracefully. Phase 4 will replace the current in-memory queue binding with BullMQ.
+- **Asynchronous Processing**: Webhooks push events to a BullMQ queue (Redis), processed by a background worker to handle LLM latency gracefully. The BullMQ adapter is in place; the worker consumer lands in T-4.2.
 - **Fail-Safe Tool Calling**: AI outputs are treated as untrusted input. They are validated against domain rules (e.g., timezone parsing in UTC-5, valid clinic IDs) before hitting the database.
 - **Idempotency**: Handled at the database level to prevent duplicate processing.
 
@@ -96,7 +96,7 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 1 | Foundation (scaffolding, domain, databases) | Completed |
 | 2 | Backend core data (PG/Mongo repos, CQRS) | Completed |
 | 3 | AI pipeline (LLM, RAG, tool validation, orchestration) | Completed |
-| 4 | Async processing (BullMQ queue, worker, webhook) | Backlog |
+| 4 | Async processing (BullMQ queue done, worker, webhook) | In Progress |
 | 5 | API layer (controllers, routes, error handling) | Backlog |
 | 6 | Frontend (Angular dashboard + simulator) | Backlog |
 | 7 | Seed data (full PG knowledge base + Mongo samples) | Backlog |
@@ -119,7 +119,7 @@ MessengerHub/
 │   │   └── src/
 │   │       ├── domain/          # Entities, VOs, enums, repository/service interfaces, errors, events
 │   │       ├── application/     # CQRS handlers, DTOs, AI orchestration (LLM + RAG + tools)
-│   │       ├── infrastructure/  # Postgres (pgvector) & Mongo adapters, LLM/embedding clients, in-memory queue
+│   │       ├── infrastructure/  # Postgres (pgvector) & Mongo adapters, LLM/embedding clients, BullMQ queue
 │   │       └── presentation/    # Placeholder — controllers arrive in Phase 5
 │   └── web/                     # Angular frontend (Dashboard & Simulator)
 │       └── src/

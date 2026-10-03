@@ -9,6 +9,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
 import { EmbeddingModule } from './infrastructure/embeddings/embedding.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { LlmModule } from './infrastructure/llm/llm.module';
+import { QueueModule } from './infrastructure/queue/queue.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { LlmModule } from './infrastructure/llm/llm.module';
     DatabaseModule,
     EmbeddingModule,
     LlmModule,
+    QueueModule,
     InfrastructureModule,
     AIModule,
     ApplicationModule,

@@ -238,7 +238,7 @@ The OpenAI SDK reads `LLM_BASE_URL` to route requests to Gemini. The model name,
 
 # 7. Asynchronous Processing: Queue + Worker Pattern
 
-**Status:** Accepted — target design for Phase 4 (queue binding currently in-memory)
+**Status:** Accepted — BullMQ adapter landed in T-4.1 (worker consumer still pending T-4.2)
 
 **Context:** The webhook endpoint must respond fast (< 200ms). LLM processing takes 5–30 seconds (depending on tool calls and iterations). Blocking the HTTP response for LLM latency is unacceptable.
 
@@ -246,10 +246,13 @@ The OpenAI SDK reads `LLM_BASE_URL` to route requests to Gemini. The model name,
 
 **Implementation status:**
 
-- `QUEUE_SERVICE` is bound to `InMemoryQueueService` (`infrastructure/queue/in-memory-queue.service.ts`) in `InfrastructureModule`.
-- `ProcessIncomingMessageHandler` already calls `queueService.push(job)` after inserting the message.
-- **No worker consumes the queue yet** — `AIOrchestratorService.processTurn` exists but is not wired to a BullMQ consumer.
-- Redis is provisioned in `docker-compose.yml` and `bullmq` is a dependency; the BullMQ adapter lands in T-4.1.
+- `QUEUE_SERVICE` is bound to `BullMQQueueService` (`infrastructure/queue/bullmq-queue.service.ts`) via `QueueModule` (global, imported by `AppModule`).
+- `ProcessIncomingMessageHandler` calls `queueService.push(job)` after inserting the message.
+- Main queue: `message-processing` (3 attempts, exponential backoff 1s, retain 100 complete / 500 failed).
+- DLQ queue: `message-processing-dlq` — `BullMQQueueService.pushToDlq()` moves permanently failed job payloads for inspection.
+- Redis connection comes from `REDIS_HOST` / `REDIS_PORT` (defaults `localhost:6379`).
+- `InMemoryQueueService` remains as a test/dev implementation of the same interface; it is no longer the production binding.
+- **No worker consumes the queue yet** — `AIOrchestratorService.processTurn` exists but is not wired to a BullMQ consumer (T-4.2).
 
 **Flow (target):**
 
@@ -288,13 +291,13 @@ Worker (separate process):
 - BullMQ runs on Redis, which is easy to spin up in Docker Compose.
 - Same queue semantics (jobs, retries, delays) without AWS dependency.
 - Switching between BullMQ and SQS is an infrastructure adapter swap.
-- Until T-4.1, the adapter is an in-memory implementation of the same `QueueService` interface so application code and tests do not change when BullMQ arrives.
+- The adapter is a thin implementation of the `QueueService` domain interface, so application code and tests do not change if SQS replaces BullMQ later.
 
 **Trade-offs:**
 
 - Two processes to run locally (API + Worker).
 - Message ordering is not guaranteed (SQS FIFO is available but adds complexity). Acceptable because conversations are naturally sequential per phone number.
-- In-memory queue loses jobs on process restart — acceptable for development only.
+- In-memory queue loses jobs on process restart — acceptable for development only (now superseded by BullMQ for the production binding).
 
 ---
 

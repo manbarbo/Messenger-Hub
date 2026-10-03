@@ -25,7 +25,7 @@ Phases 1–3 are **Completed**. What exists in the codebase today:
 
 **Current gaps (planned Phases 4–8):**
 
-- `QUEUE_SERVICE` is `InMemoryQueueService`; no BullMQ adapter or worker consumer yet.
+- `QUEUE_SERVICE` is `BullMQQueueService` via `QueueModule` (main + DLQ); no worker consumer yet (T-4.2).
 - `presentation/` is a placeholder — no webhook/dashboard/simulator controllers.
 - Orchestrator returns `ConversationStatus` but does not yet persist it via `ConversationRepository.updateStatus`.
 - Seed does not yet include knowledge documents/embeddings (T-7.1) or Mongo samples (T-7.2).
@@ -96,7 +96,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-3.2 | AI Pipeline | RAG Pipeline | Backend | Completed | 2–3 |
 | T-3.3 | AI Pipeline | Tool Calling Validation | Backend | Completed | 2–3 |
 | T-3.4 | AI Pipeline | AI Orchestration | Backend | Completed | 2–3 |
-| T-4.1 | Async Processing | Queue Service | Backend | Backlog | 1–2 |
+| T-4.1 | Async Processing | Queue Service | Backend | Completed | 1–2 |
 | T-4.2 | Async Processing | Worker | Backend | Backlog | 2–3 |
 | T-4.3 | Async Processing | Webhook Endpoint | Backend | Backlog | 1–2 |
 | T-5.1 | API Layer | Controllers & Routes | Backend | Backlog | 2–3 |
@@ -179,7 +179,7 @@ T-8.3 (Coverage Verification) — final gate
 | T-3.2 | `apps/api/src/infrastructure/embeddings/gemini-embedding.service.ts`, `apps/api/src/infrastructure/repositories/prisma-knowledge.repository.ts` |
 | T-3.3 | `apps/api/src/application/llm/tool-schemas.ts`, `apps/api/src/application/llm/tool-validator.ts` |
 | T-3.4 | `apps/api/src/application/llm/ai-orchestrator.service.ts`, `apps/api/src/application/llm/prompt-builder.ts` |
-| T-4.1 | `apps/api/src/infrastructure/queue/bullmq-queue.service.ts` |
+| T-4.1 | `apps/api/src/infrastructure/queue/bullmq-queue.service.ts`, `apps/api/src/infrastructure/queue/queue.module.ts` |
 | T-4.2 | `apps/api/src/application/worker/message-processor.service.ts` |
 | T-4.3 | `apps/api/src/presentation/controllers/webhook.controller.ts` |
 | T-5.1 | `apps/api/src/presentation/controllers/conversations.controller.ts`, `apps/api/src/presentation/controllers/simulator.controller.ts` |
