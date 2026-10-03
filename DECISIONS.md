@@ -4,7 +4,7 @@
 
 This document captures the key architectural and technical decisions made during the design and implementation of MessengerHub, along with their context, rationale, and trade-offs.
 
-> **Implementation status (2026-10-02):** Phases 1–3 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration). Decisions below marked with *(implemented)* reflect choices already visible in code; others describe target design for Phases 4–8.
+> **Implementation status (2026-10-02):** Phases 1–8 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration, async processing, API layer, frontend dashboard, seed data, testing & coverage). Phase 9 (Logging) is planned. Decisions below marked with *(implemented)* reflect choices already visible in code; others describe target design.
 
 ---
 
@@ -587,19 +587,46 @@ class MockLLMService implements LLMService {
 
 # 17. Structured Logging
 
-**Status:** Accepted
+**Status:** Accepted — Planned (T-9.1 backend, T-9.2 frontend)
 
-**Context:** The system needs observability for debugging LLM interactions, tracking costs, and investigating incidents. Logs must be structured (not free-text strings) and environment-aware.
+**Context:** The system needs observability for debugging LLM interactions, tracking costs, and investigating incidents. Logs must be structured (not free-text strings) and environment-aware. Both backend and frontend need logging.
 
-**Decision:** Use Winston as the logging provider, abstracted behind a `Logger` interface. Use a NestJS interceptor for HTTP request/response logging.
+**Decision:** Use Winston as the backend logging provider, abstracted behind a `Logger` interface with a `LOGGER` DI token. Use a NestJS interceptor for HTTP request/response logging. Frontend uses a standalone `LoggerService` with global error handlers.
+
+**Backend design (T-9.1):**
+
+- `Logger` interface in domain layer (`domain/services/logger.interface.ts`) with `debug`, `info`, `warn`, `error` methods.
+- `LOGGER` DI token for injection (consistent with existing repository/service token pattern).
+- `WinstonLoggerService` implementing `Logger` and NestJS `LoggerService`.
+- Environment-aware: colorized console in dev, JSON in production.
+- Daily rotate file transport for production (`logs/error-*.log`, `logs/combined-*.log`; 20MB max, 14 days retention).
+- `LoggingInterceptor` capturing method, path, status, duration, and sanitizing sensitive body fields (password, token, secret, apiKey).
+- `LoggerModule` as `@Global()` module exporting the `LOGGER` token.
+
+**Frontend design (T-9.2):**
+
+- `LoggerService` injectable (`providedIn: 'root'`) with `debug`, `info`, `warn`, `error` levels.
+- `GlobalErrorHandler` implementing Angular `ErrorHandler` for unhandled component errors.
+- `window.onerror` and `unhandledrejection` listeners for runtime errors.
+- API error logging integrated into existing `error.interceptor.ts`.
+- Development: colorized console output. Production: structured JSON, errors persisted to localStorage.
+- `ErrorBoundaryComponent` for fallback UI on unhandled errors.
+- Optional `POST /api/logs` endpoint for frontend error reporting to backend.
 
 **Rationale:**
 
 - **Winston maturity** — The most widely adopted logging library in the Node.js ecosystem. Supports multiple transports, log levels, and structured formatting.
 - **Environment-aware formatting** — Colorized human-readable logs in development. JSON-structured logs in production for CloudWatch.
 - **Abstraction via interface** — The `Logger` interface is defined independently of Winston. If we swap to Pino or a cloud provider, only the infrastructure implementation changes.
+- **DI token pattern** — Consistent with existing `APPOINTMENT_REPOSITORY`, `EVENT_PUBLISHER`, etc. tokens used throughout the codebase.
+- **Body sanitization** — Sensitive fields (password, token, secret, apiKey) are redacted in HTTP logs to prevent credential leakage.
+- **Frontend error capture** — Angular's `ErrorHandler` + window listeners ensure no error goes unobserved. localStorage persistence enables post-mortem debugging.
 
----
+**Trade-offs:**
+
+- Winston is heavier than alternatives like Pino. Acceptable for this project's scale.
+- Daily rotate file adds disk I/O. Mitigated by size limits and retention policies.
+- Frontend localStorage persistence is limited to 50 errors (FIFO). Sufficient for post-mortem; a backend endpoint provides centralized collection.
 
 # 18. Error Handling: Explicit Domain Errors
 

@@ -98,9 +98,10 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 3 | AI pipeline (LLM, RAG, tool validation, orchestration) | Completed |
 | 4 | Async processing (queue, worker, webhook) | Completed |
 | 5 | API layer (controllers, routes, error handling) | Completed |
-| 6 | Frontend (Angular dashboard + simulator) | Backlog |
+| 6 | Frontend (Angular dashboard + simulator) | Completed |
 | 7 | Seed data (PG knowledge base + Mongo samples) | Completed |
-| 8 | Testing & coverage gate (≥ 75%) | Backlog |
+| 8 | Testing & coverage gate (≥ 75%) | Completed |
+| 9 | Logging (backend Winston + frontend error tracking) | Backlog |
 
 See [plans/master_plan.md](./plans/master_plan.md) for the full task breakdown.
 
@@ -258,3 +259,16 @@ Private — for evaluation purposes only.
 | Max 5 tool-call iterations | Prevents infinite loops; forces escalation if unresolved |
 
 Full decision record in [DECISIONS.md](./DECISIONS.md).
+
+## Logging (Phase 9 — Planned)
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Backend Logger | Winston | Structured logging with `Logger` interface + `LOGGER` DI token |
+| HTTP Logging | NestJS Interceptor | Request/response with method, path, status, duration, sanitized body |
+| Log Rotation | winston-daily-rotate-file | `logs/error-*.log`, `logs/combined-*.log` (20MB, 14 days) |
+| Frontend Logger | Angular `LoggerService` | Dev: colorized console. Prod: JSON + localStorage persistence |
+| Error Capture | `ErrorHandler` + window listeners | Unhandled component errors, runtime errors, promise rejections |
+| Error Boundary | `ErrorBoundaryComponent` | Fallback UI on unhandled errors |
+
+See [DECISIONS.md §17](./DECISIONS.md#17-structured-logging) and [DESIGN.md §10](./DESIGN.md#10-logging-architecture) for details.

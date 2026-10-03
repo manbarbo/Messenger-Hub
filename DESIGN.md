@@ -4,7 +4,7 @@
 
 This document defines the data model, API contracts, AI pipeline, and frontend views for the MessengerHub AI clinic assistant.
 
-> **Implementation status (2026-10-02):** Phases 1–3 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration). Sections describing webhooks, workers, HTTP API contracts, dashboard views, and full seed data are the **target design** for Phases 4–8 and are not yet exposed at runtime. Where implementation details differ from an earlier draft of this document, the code is authoritative and the notes below reflect the current code.
+> **Implementation status (2026-10-02):** Phases 1–8 are implemented (domain, persistence, CQRS, LLM/RAG/orchestration, async processing, API layer, frontend dashboard, seed data, testing). Phase 9 (Logging) is planned. Sections describing logging infrastructure are the **target design** for Phase 9. Where implementation details differ from an earlier draft of this document, the code is authoritative.
 
 ---
 
@@ -984,3 +984,109 @@ LLM costs are separate and depend on the provider. At ~$0.0003 per conversation 
 | Zod validation for LLM outputs | LLM arguments are untrusted input; must be validated before execution |
 | Max 5 tool-call iterations | Prevents infinite loops; forces escalation if unresolved |
 | Unique constraint on slot_id | Database-level guarantee against double-booking |
+
+---
+
+# 10. Logging Architecture
+
+> **Status:** Planned (Phase 9 — T-9.1 backend, T-9.2 frontend)
+
+## Backend Logging
+
+### Logger Interface
+
+```typescript
+// apps/api/src/domain/services/logger.interface.ts
+export const LOGGER = Symbol('LOGGER');
+
+export type LogMetadata = Record<string, unknown>;
+
+export interface Logger {
+  debug(message: string, metadata?: LogMetadata): void;
+  info(message: string, metadata?: LogMetadata): void;
+  warn(message: string, metadata?: LogMetadata): void;
+  error(message: string, metadata?: LogMetadata): void;
+}
+```
+
+### Winston Configuration
+
+| Environment | Console Format | File Transport | Level |
+|-------------|---------------|----------------|-------|
+| Development | Colorized, human-readable | None | `debug` |
+| Production | JSON (structured) | Daily rotate (`logs/error-*.log`, `logs/combined-*.log`) | `info` |
+
+File transport settings: max size 20MB, retention 14 days, gzip compression.
+
+### HTTP Request Logging
+
+`LoggingInterceptor` captures every HTTP request/response:
+
+```text
+Incoming request  { context: 'HTTP', method: 'POST', path: '/webhooks/messages', body: { ...sanitized } }
+Response sent     { context: 'HTTP', method: 'POST', path: '/webhooks/messages', statusCode: 202, duration: 45 }
+Request failed    { context: 'HTTP', method: 'POST', path: '/api/conversations', statusCode: 500, duration: 120, error: '...', stack: '...' }
+```
+
+**Body sanitization:** Fields named `password`, `token`, `secret`, `apiKey`, `key` are redacted before logging.
+
+### Module Wiring
+
+```text
+LoggerModule (@Global)
+  ├── LOGGER → WinstonLoggerService
+  └── WinstonLoggerService (also implements NestJS LoggerService)
+
+AppModule
+  ├── LoggerModule (import)
+  └── main.ts: app.useGlobalInterceptors(new LoggingInterceptor(app.get(LOGGER)))
+```
+
+## Frontend Logging
+
+### Logger Service
+
+```typescript
+// apps/web/src/app/core/logger.service.ts
+@Injectable({ providedIn: 'root' })
+export class LoggerService {
+  debug(message: string, context?: string, data?: unknown): void;
+  info(message: string, context?: string, data?: unknown): void;
+  warn(message: string, context?: string, data?: unknown): void;
+  error(message: string, context?: string, data?: unknown): void;
+}
+```
+
+### Error Capture Strategy
+
+| Source | Handler | Output |
+|--------|---------|--------|
+| Angular component errors | `GlobalErrorHandler` (implements `ErrorHandler`) | Logger.error + localStorage |
+| Runtime JS errors | `window.onerror` | Logger.error + localStorage |
+| Unhandled promise rejections | `window.addEventListener('unhandledrejection')` | Logger.error + localStorage |
+| API HTTP errors | `error.interceptor.ts` (existing) | Logger.error with method, path, status |
+
+### Development vs Production
+
+| Mode | Console Output | Error Persistence |
+|------|---------------|-------------------|
+| Development | Colorized `[timestamp] [LEVEL] [context] message` | None |
+| Production | JSON (`{ level, message, context, data, timestamp }`) | localStorage (last 50 errors) |
+
+### Error Boundary Component
+
+`ErrorBoundaryComponent` wraps content and displays fallback UI when an unhandled error occurs:
+
+```text
+Normal: <app-error-boundary><router-outlet /></app-error-boundary>
+Error:  "Something went wrong" + error message + "Try again" button
+```
+
+### Optional: Backend Log Endpoint
+
+`POST /api/logs` receives frontend errors and logs them via the backend `LOGGER`:
+
+```text
+Frontend → POST /api/logs { level: 'error', message: '...', context: '...', data: {...} }
+Backend  → logger.info('Frontend error reported', { context: 'Frontend', ...body })
+```

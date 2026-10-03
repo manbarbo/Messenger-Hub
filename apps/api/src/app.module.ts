@@ -9,6 +9,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
 import { EmbeddingModule } from './infrastructure/embeddings/embedding.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { LlmModule } from './infrastructure/llm/llm.module';
+import { LoggerModule } from './infrastructure/logging/logger.module';
 import { QueueModule } from './infrastructure/queue/queue.module';
 import { PresentationModule } from './presentation/presentation.module';
 
@@ -19,6 +20,7 @@ import { PresentationModule } from './presentation/presentation.module';
       envFilePath: ['.env', '../.env'],
     }),
     EventEmitterModule.forRoot(),
+    LoggerModule,
     DatabaseModule,
     EmbeddingModule,
     LlmModule,

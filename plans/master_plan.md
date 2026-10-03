@@ -95,6 +95,10 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
   8.1 Backend Testing
   8.2 Frontend Testing
   8.3 Coverage Verification
+
+Phase 9: Logging (Day 3 — Evening)
+  9.1 Backend Logging System
+  9.2 Frontend Logging & Error Tracking
 ```
 
 ---
@@ -128,8 +132,10 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-8.1 | Testing | Backend Testing | Backend | Completed | 3–4 |
 | T-8.2 | Testing | Frontend Testing | Frontend | Completed | 2–3 |
 | T-8.3 | Testing | Coverage Verification | Full Stack | Completed | 1 |
+| T-9.1 | Logging | Backend Logging System | Backend | Completed | 2–3 |
+| T-9.2 | Logging | Frontend Logging & Error Tracking | Frontend | Pending | 2–3 |
 
-**Total estimated effort:** 42–60 hours (feasible in 2–3 days with AI assistance)
+**Total estimated effort:** 46–66 hours (feasible in 2–3 days with AI assistance)
 
 ---
 
@@ -178,6 +184,15 @@ T-4.3 (Webhook) + T-5.1 (Controllers)
 T-8.1 (Backend Testing) — runs in parallel with T-2.x through T-5.x
 T-8.2 (Frontend Testing) — runs after T-6.2, T-6.3, T-6.4
 T-8.3 (Coverage Verification) — final gate
+
+T-5.2 (Error Handling)
+  └── T-9.1 (Backend Logging)
+
+T-6.1 (Angular Foundation)
+  └── T-9.2 (Frontend Logging)
+
+T-9.1 (Backend Logging)
+  └── T-9.2 (Frontend Logging) — optional: backend /api/logs endpoint depends on T-9.1 LOGGER
 ```
 
 ---
@@ -211,6 +226,8 @@ T-8.3 (Coverage Verification) — final gate
 | T-8.1 | `apps/api/src/**/*.spec.ts` |
 | T-8.2 | `apps/web/src/**/*.spec.ts` |
 | T-8.3 | Coverage reports |
+| T-9.1 | `apps/api/src/domain/services/logger.interface.ts`, `apps/api/src/infrastructure/logging/`, `apps/api/src/presentation/interceptors/logging.interceptor.ts` |
+| T-9.2 | `apps/web/src/app/core/logger.service.ts`, `apps/web/src/app/core/global-error.handler.ts`, `apps/web/src/app/shared/components/error-boundary/` |
 
 ---
 
@@ -240,3 +257,4 @@ T-8.3 (Coverage Verification) — final gate
 | Morning (3h) | T-6.3, T-6.4 | Conversation detail + simulator |
 | Midday (2h) | T-7.1, T-7.2 | Seed data for both databases |
 | Afternoon (3h) | T-8.1, T-8.2, T-8.3 | Testing + coverage verification |
+| Evening (2h) | T-9.1, T-9.2 | Backend + frontend logging |
