@@ -1,0 +1,51 @@
+.layout {
+  height: 100vh;
+}
+
+.layout__sidenav {
+  width: 240px;
+}
+
+.layout__brand {
+  padding: 1.25rem 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.layout__nav {
+  padding-top: 0;
+}
+
+.layout__nav-link--active {
+  background: rgba(25, 118, 210, 0.12);
+}
+
+.layout__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.layout__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.layout__menu-button {
+  margin-right: 0.5rem;
+}
+
+.layout__menu-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.layout__title {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.layout__main {
+  flex: 1;
+  padding: 1.25rem 1.5rem 2rem;
+}

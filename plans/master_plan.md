@@ -101,7 +101,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-4.3 | Async Processing | Webhook Endpoint | Backend | Completed | 1–2 |
 | T-5.1 | API Layer | Controllers & Routes | Backend | Completed | 2–3 |
 | T-5.2 | API Layer | Error Handling & Validation | Backend | Completed | 1–2 |
-| T-6.1 | Frontend | Angular Foundation | Frontend | Backlog | 2–3 |
+| T-6.1 | Frontend | Angular Foundation | Frontend | Completed | 2–3 |
 | T-6.2 | Frontend | Conversation Inbox | Frontend | Backlog | 2–3 |
 | T-6.3 | Frontend | Conversation Detail + AI Traces | Frontend | Backlog | 3–4 |
 | T-6.4 | Frontend | Patient Simulator | Frontend | Backlog | 1–2 |

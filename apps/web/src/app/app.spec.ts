@@ -17,16 +17,11 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have the 'MessengerHub' title`, () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app.title()).toEqual('MessengerHub');
-  });
-
-  it('should render title', () => {
+  it('should render the layout shell', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('MessengerHub');
+    expect(compiled.querySelector('app-layout')).toBeTruthy();
+    expect(compiled.textContent).toContain('MessengerHub');
   });
 });

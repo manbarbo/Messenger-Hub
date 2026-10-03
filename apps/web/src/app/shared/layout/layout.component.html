@@ -1,0 +1,48 @@
+<mat-sidenav-container class="layout">
+  <mat-sidenav
+    class="layout__sidenav"
+    mode="over"
+    [opened]="sidenavOpen()"
+    (closedStart)="closeSidenavOnMobile()"
+  >
+    <div class="layout__brand">MessengerHub</div>
+
+    <mat-nav-list class="layout__nav">
+      <a
+        mat-list-item
+        routerLink="/conversations"
+        routerLinkActive="layout__nav-link--active"
+        (click)="closeSidenavOnMobile()"
+      >
+        <span matListItemTitle>Conversations</span>
+      </a>
+      <a
+        mat-list-item
+        routerLink="/simulator"
+        routerLinkActive="layout__nav-link--active"
+        (click)="closeSidenavOnMobile()"
+      >
+        <span matListItemTitle>Simulator</span>
+      </a>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="layout__content">
+    <mat-toolbar class="layout__toolbar">
+      <button
+        mat-icon-button
+        type="button"
+        class="layout__menu-button"
+        aria-label="Toggle navigation"
+        (click)="toggleSidenav()"
+      >
+        <span class="layout__menu-icon" aria-hidden="true">☰</span>
+      </button>
+      <span class="layout__title">Clinic Assistant Dashboard</span>
+    </mat-toolbar>
+
+    <main class="layout__main">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

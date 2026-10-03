@@ -1,0 +1,35 @@
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.status-badge--active {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.status-badge--resolved-by-ai {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge--appointment-booked {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}
+
+.status-badge--escalated {
+  background: #ffebee;
+  color: #b71c1c;
+}
+
+.status-badge--unknown {
+  background: #eeeeee;
+  color: #424242;
+}

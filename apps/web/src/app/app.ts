@@ -1,12 +1,11 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { LayoutComponent } from './shared/layout/layout.component';
 
 @Component({
-  imports: [RouterOutlet],
   selector: 'app-root',
+  imports: [LayoutComponent],
+  template: '<app-layout />',
   styleUrl: './app.scss',
-  templateUrl: './app.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {
-  readonly title = signal('MessengerHub');
-}
+export class App {}

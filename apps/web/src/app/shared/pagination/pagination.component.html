@@ -1,0 +1,18 @@
+<div class="pagination" role="navigation" aria-label="Pagination">
+  <span class="pagination__range">{{ rangeLabel() }}</span>
+
+  <div class="pagination__controls">
+    <button
+      mat-stroked-button
+      type="button"
+      [disabled]="!hasPrevious()"
+      (click)="previous()"
+    >
+      Previous
+    </button>
+    <span class="pagination__page">Page {{ page() }} / {{ totalPages() }}</span>
+    <button mat-stroked-button type="button" [disabled]="!hasNext()" (click)="next()">
+      Next
+    </button>
+  </div>
+</div>

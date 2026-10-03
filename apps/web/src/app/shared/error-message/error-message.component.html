@@ -1,0 +1,9 @@
+<div class="error-message" role="alert">
+  <h3 class="error-message__title">{{ title() }}</h3>
+  <p class="error-message__body">{{ message() }}</p>
+  @if (canRetry()) {
+    <button mat-stroked-button type="button" class="error-message__retry" (click)="onRetry()">
+      Retry
+    </button>
+  }
+</div>
