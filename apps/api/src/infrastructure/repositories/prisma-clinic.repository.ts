@@ -33,4 +33,11 @@ export class PrismaClinicRepository implements ClinicRepository {
     const row = await this.prisma.clinic.findUnique({ where: { id } });
     return row ? toDomain(row) : null;
   }
+
+  async findByName(name: string): Promise<Clinic | null> {
+    const row = await this.prisma.clinic.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+    });
+    return row ? toDomain(row) : null;
+  }
 }

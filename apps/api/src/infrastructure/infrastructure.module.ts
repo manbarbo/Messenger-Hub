@@ -4,6 +4,7 @@ import {
   APPOINTMENT_REPOSITORY,
   CLINIC_REPOSITORY,
   CONVERSATION_REPOSITORY,
+  DOCTOR_REPOSITORY,
   KNOWLEDGE_REPOSITORY,
   MESSAGE_REPOSITORY,
   SLOT_REPOSITORY,
@@ -13,6 +14,7 @@ import { EventEmitterEventPublisher } from './events/event-emitter-event-publish
 import { InMemoryQueueService } from './queue/in-memory-queue.service';
 import { PrismaAppointmentRepository } from './repositories/prisma-appointment.repository';
 import { PrismaClinicRepository } from './repositories/prisma-clinic.repository';
+import { PrismaDoctorRepository } from './repositories/prisma-doctor.repository';
 import { PrismaKnowledgeRepository } from './repositories/prisma-knowledge.repository';
 import { PrismaSlotRepository } from './repositories/prisma-slot.repository';
 import { MongoAITraceRepository } from './repositories/mongo-ai-trace.repository';
@@ -24,6 +26,7 @@ import { MongoMessageRepository } from './repositories/mongo-message.repository'
   providers: [
     { provide: APPOINTMENT_REPOSITORY, useClass: PrismaAppointmentRepository },
     { provide: CLINIC_REPOSITORY, useClass: PrismaClinicRepository },
+    { provide: DOCTOR_REPOSITORY, useClass: PrismaDoctorRepository },
     { provide: SLOT_REPOSITORY, useClass: PrismaSlotRepository },
     { provide: KNOWLEDGE_REPOSITORY, useClass: PrismaKnowledgeRepository },
     { provide: CONVERSATION_REPOSITORY, useClass: MongoConversationRepository },
@@ -35,6 +38,7 @@ import { MongoMessageRepository } from './repositories/mongo-message.repository'
   exports: [
     APPOINTMENT_REPOSITORY,
     CLINIC_REPOSITORY,
+    DOCTOR_REPOSITORY,
     SLOT_REPOSITORY,
     KNOWLEDGE_REPOSITORY,
     CONVERSATION_REPOSITORY,

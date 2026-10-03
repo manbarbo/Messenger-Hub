@@ -3,6 +3,7 @@ import {
   AI_TRACE_REPOSITORY,
   APPOINTMENT_REPOSITORY,
   CONVERSATION_REPOSITORY,
+  DOCTOR_REPOSITORY,
   EMBEDDING_SERVICE,
   EVENT_PUBLISHER,
   KNOWLEDGE_REPOSITORY,
@@ -26,6 +27,7 @@ describe('DI tokens', () => {
       EMBEDDING_SERVICE,
       QUEUE_SERVICE,
       EVENT_PUBLISHER,
+      DOCTOR_REPOSITORY,
     ];
     expect(new Set(tokens).size).toBe(tokens.length);
     tokens.forEach((token) => expect(typeof token).toBe('symbol'));

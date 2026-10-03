@@ -8,6 +8,7 @@ import {
   APPOINTMENT_REPOSITORY,
   CLINIC_REPOSITORY,
   CONVERSATION_REPOSITORY,
+  DOCTOR_REPOSITORY,
   EVENT_PUBLISHER,
   KNOWLEDGE_REPOSITORY,
   MESSAGE_REPOSITORY,
@@ -25,6 +26,7 @@ import { CreateAppointmentHandler } from './commands/create-appointment/create-a
 import { ProcessIncomingMessageHandler } from './commands/process-incoming-message/process-incoming-message.handler';
 import { AppointmentCancelledEventHandler } from './event-handlers/appointment-cancelled.handler';
 import { AppointmentCreatedEventHandler } from './event-handlers/appointment-created.handler';
+import { ToolValidator } from './llm/tool-validator';
 import { GetConversationDetailHandler } from './queries/get-conversation-detail/get-conversation-detail.handler';
 import { ListConversationsHandler } from './queries/list-conversations/list-conversations.handler';
 
@@ -33,7 +35,7 @@ const noop = async () => undefined;
 @Global()
 @Module({
   providers: [
-    { provide: SLOT_REPOSITORY, useValue: { findById: noop } },
+    { provide: SLOT_REPOSITORY, useValue: { findById: noop, findAvailable: noop } },
     {
       provide: APPOINTMENT_REPOSITORY,
       useValue: { create: noop, findById: noop, update: noop },
@@ -47,7 +49,8 @@ const noop = async () => undefined;
       useValue: { findByMessageId: noop, create: noop, findByConversationId: noop },
     },
     { provide: AI_TRACE_REPOSITORY, useValue: { findByConversationId: noop, create: noop } },
-    { provide: CLINIC_REPOSITORY, useValue: { findById: noop } },
+    { provide: CLINIC_REPOSITORY, useValue: { findById: noop, findByName: noop } },
+    { provide: DOCTOR_REPOSITORY, useValue: { existsByClinicAndSpecialty: noop } },
     { provide: EVENT_PUBLISHER, useValue: { publish: noop } },
     { provide: QUEUE_SERVICE, useValue: { push: noop } },
     { provide: KNOWLEDGE_REPOSITORY, useValue: {} },
@@ -59,6 +62,7 @@ const noop = async () => undefined;
     MESSAGE_REPOSITORY,
     AI_TRACE_REPOSITORY,
     CLINIC_REPOSITORY,
+    DOCTOR_REPOSITORY,
     EVENT_PUBLISHER,
     QUEUE_SERVICE,
     KNOWLEDGE_REPOSITORY,
@@ -102,5 +106,6 @@ describe('ApplicationModule', () => {
     expect(moduleRef.get(GetConversationDetailHandler)).toBeInstanceOf(
       GetConversationDetailHandler,
     );
+    expect(moduleRef.get(ToolValidator)).toBeInstanceOf(ToolValidator);
   });
 });

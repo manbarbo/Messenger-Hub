@@ -13,11 +13,16 @@ const clinicRow = {
 };
 
 describe('PrismaClinicRepository', () => {
-  let prisma: { clinic: { findUnique: ReturnType<typeof vi.fn> } };
+  let prisma: {
+    clinic: {
+      findUnique: ReturnType<typeof vi.fn>;
+      findFirst: ReturnType<typeof vi.fn>;
+    };
+  };
   let repository: PrismaClinicRepository;
 
   beforeEach(() => {
-    prisma = { clinic: { findUnique: vi.fn() } };
+    prisma = { clinic: { findUnique: vi.fn(), findFirst: vi.fn() } };
     repository = new PrismaClinicRepository(prisma as never);
   });
 
@@ -34,5 +39,22 @@ describe('PrismaClinicRepository', () => {
     prisma.clinic.findUnique.mockResolvedValue(null);
 
     expect(await repository.findById('missing')).toBeNull();
+  });
+
+  it('finds clinic by name case-insensitively', async () => {
+    prisma.clinic.findFirst.mockResolvedValue(clinicRow);
+
+    const result = await repository.findByName('clínica norte');
+
+    expect(prisma.clinic.findFirst).toHaveBeenCalledWith({
+      where: { name: { equals: 'clínica norte', mode: 'insensitive' } },
+    });
+    expect(result).toEqual(clinicRow);
+  });
+
+  it('returns null when clinic name does not match', async () => {
+    prisma.clinic.findFirst.mockResolvedValue(null);
+
+    expect(await repository.findByName('Clínica Sur')).toBeNull();
   });
 });

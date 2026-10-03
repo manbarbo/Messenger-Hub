@@ -8,6 +8,7 @@ import {
   APPOINTMENT_REPOSITORY,
   CLINIC_REPOSITORY,
   CONVERSATION_REPOSITORY,
+  DOCTOR_REPOSITORY,
   EMBEDDING_SERVICE,
   EVENT_PUBLISHER,
   KNOWLEDGE_REPOSITORY,
@@ -27,6 +28,7 @@ import { EventEmitterEventPublisher } from './events/event-emitter-event-publish
 import { InMemoryQueueService } from './queue/in-memory-queue.service';
 import { PrismaAppointmentRepository } from './repositories/prisma-appointment.repository';
 import { PrismaClinicRepository } from './repositories/prisma-clinic.repository';
+import { PrismaDoctorRepository } from './repositories/prisma-doctor.repository';
 import { PrismaKnowledgeRepository } from './repositories/prisma-knowledge.repository';
 import { PrismaSlotRepository } from './repositories/prisma-slot.repository';
 import { MongoAITraceRepository } from './repositories/mongo-ai-trace.repository';
@@ -61,6 +63,7 @@ describe('InfrastructureModule', () => {
     const moduleRef = await createTestModule();
     expect(moduleRef.get(APPOINTMENT_REPOSITORY)).toBeInstanceOf(PrismaAppointmentRepository);
     expect(moduleRef.get(CLINIC_REPOSITORY)).toBeInstanceOf(PrismaClinicRepository);
+    expect(moduleRef.get(DOCTOR_REPOSITORY)).toBeInstanceOf(PrismaDoctorRepository);
     expect(moduleRef.get(SLOT_REPOSITORY)).toBeInstanceOf(PrismaSlotRepository);
     expect(moduleRef.get(KNOWLEDGE_REPOSITORY)).toBeInstanceOf(PrismaKnowledgeRepository);
   });
@@ -83,6 +86,7 @@ describe('InfrastructureModule', () => {
     const tokens = [
       APPOINTMENT_REPOSITORY,
       CLINIC_REPOSITORY,
+      DOCTOR_REPOSITORY,
       SLOT_REPOSITORY,
       KNOWLEDGE_REPOSITORY,
       CONVERSATION_REPOSITORY,

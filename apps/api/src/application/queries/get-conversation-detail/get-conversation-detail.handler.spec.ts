@@ -69,14 +69,14 @@ describe('GetConversationDetailHandler', () => {
   let conversationRepository: { findById: ReturnType<typeof vi.fn> };
   let messageRepository: { findByConversationId: ReturnType<typeof vi.fn> };
   let aiTraceRepository: { findByConversationId: ReturnType<typeof vi.fn> };
-  let clinicRepository: { findById: ReturnType<typeof vi.fn> };
+  let clinicRepository: { findById: ReturnType<typeof vi.fn>; findByName: ReturnType<typeof vi.fn> };
   let handler: GetConversationDetailHandler;
 
   beforeEach(() => {
     conversationRepository = { findById: vi.fn() };
     messageRepository = { findByConversationId: vi.fn() };
     aiTraceRepository = { findByConversationId: vi.fn() };
-    clinicRepository = { findById: vi.fn() };
+    clinicRepository = { findById: vi.fn(), findByName: vi.fn() };
     handler = new GetConversationDetailHandler(
       conversationRepository as unknown as ConversationRepository,
       messageRepository as unknown as MessageRepository,
