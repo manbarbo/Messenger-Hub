@@ -97,7 +97,7 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 2 | Backend core data (PG/Mongo repos, CQRS) | Completed |
 | 3 | AI pipeline (LLM, RAG, tool validation, orchestration) | Completed |
 | 4 | Async processing (queue, worker, webhook) | Completed |
-| 5 | API layer (controllers, routes, error handling) | Backlog |
+| 5 | API layer (controllers, routes, error handling) | Completed |
 | 6 | Frontend (Angular dashboard + simulator) | Backlog |
 | 7 | Seed data (full PG knowledge base + Mongo samples) | Backlog |
 | 8 | Testing & coverage gate (≥ 75%) | Backlog |

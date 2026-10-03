@@ -820,7 +820,7 @@ Behavior:
 
 # 7. Error Catalog
 
-> **Status:** Error classes below are mostly defined in `apps/api/src/domain/errors/`. HTTP mapping is planned for Phase 5.2 (`presentation/filters` + pipes). Not every catalog entry currently exists as a domain error class.
+> **Status (2026-10-02):** Error classes live in `apps/api/src/domain/errors/`. HTTP mapping is implemented via `presentation/filters/domain-exception.filter.ts` (global `APP_FILTER` in `PresentationModule`). Request validation stays Zod-based in controllers (no class-validator pipe). Not every catalog entry has a domain error class yet (`DoctorNotFoundError`, `InvalidTimezoneError`, `KnowledgeBaseEmptyError` remain planned).
 
 | Error | HTTP Code | When | Domain class status |
 |-------|-----------|------|---------------------|

@@ -26,7 +26,7 @@ Phases 1–3 are **Completed**. What exists in the codebase today:
 **Current gaps (planned Phases 4–8):**
 
 - Phase 4 (async processing) is complete: BullMQ queue, worker consumer, and `POST /webhooks/messages`.
-- Phase 5 controllers are complete: `GET /api/conversations`, `GET /api/conversations/:id`, `POST /api/simulator` (T-5.1). Global error handling/validation pipes remain T-5.2.
+- Phase 5 is complete: dashboard/simulator controllers (T-5.1) + global `DomainExceptionFilter` (T-5.2). Request validation is Zod-based in controllers; class-validator pipe was not added (see T-5.2 plan notes).
 - Orchestrator returns `ConversationStatus`; worker persists it via `ConversationRepository.updateStatus` after `processTurn`.
 - Seed does not yet include knowledge documents/embeddings (T-7.1) or Mongo samples (T-7.2).
 - Coverage gate (≥ 75%) is Phase 8 (T-8.3).
@@ -100,7 +100,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-4.2 | Async Processing | Worker | Backend | Completed | 2–3 |
 | T-4.3 | Async Processing | Webhook Endpoint | Backend | Completed | 1–2 |
 | T-5.1 | API Layer | Controllers & Routes | Backend | Completed | 2–3 |
-| T-5.2 | API Layer | Error Handling & Validation | Backend | Backlog | 1–2 |
+| T-5.2 | API Layer | Error Handling & Validation | Backend | Completed | 1–2 |
 | T-6.1 | Frontend | Angular Foundation | Frontend | Backlog | 2–3 |
 | T-6.2 | Frontend | Conversation Inbox | Frontend | Backlog | 2–3 |
 | T-6.3 | Frontend | Conversation Detail + AI Traces | Frontend | Backlog | 3–4 |
