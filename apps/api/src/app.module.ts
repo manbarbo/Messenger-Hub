@@ -1,8 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ApplicationModule } from './application/application.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
+import { EmbeddingModule } from './infrastructure/embeddings/embedding.module';
+import { InfrastructureModule } from './infrastructure/infrastructure.module';
+import { LlmModule } from './infrastructure/llm/llm.module';
 
 @Module({
   imports: [
@@ -10,7 +15,12 @@ import { DatabaseModule } from './infrastructure/database/database.module';
       isGlobal: true,
       envFilePath: ['.env', '../.env'],
     }),
+    EventEmitterModule.forRoot(),
     DatabaseModule,
+    EmbeddingModule,
+    LlmModule,
+    InfrastructureModule,
+    ApplicationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
