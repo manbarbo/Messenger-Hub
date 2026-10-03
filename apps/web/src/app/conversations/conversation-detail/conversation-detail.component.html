@@ -1,0 +1,33 @@
+<section class="conversation-detail" aria-labelledby="conversation-detail-title">
+  <h1 id="conversation-detail-title" class="visually-hidden">Conversation detail</h1>
+
+  @if (loading()) {
+    <app-loading-spinner label="Loading conversation…" />
+  } @else if (error(); as errorMessage) {
+    <app-error-message
+      data-testid="conversation-detail-error"
+      title="Could not load conversation"
+      [message]="errorMessage"
+      [canRetry]="true"
+      (retry)="loadConversation()"
+    />
+  } @else if (conversation(); as conversation) {
+    <app-conversation-header
+      data-testid="conversation-header"
+      [conversation]="conversation"
+      (back)="goBack()"
+    />
+
+    <div class="conversation-detail__body">
+      <section class="conversation-detail__panel" aria-labelledby="messages-title">
+        <h2 id="messages-title" class="conversation-detail__panel-title">Messages</h2>
+        <app-message-timeline [messages]="conversation.messages" />
+      </section>
+
+      <section class="conversation-detail__panel" aria-labelledby="traces-title">
+        <h2 id="traces-title" class="visually-hidden">AI execution traces</h2>
+        <app-ai-trace-panel [traces]="conversation.aiTraces" />
+      </section>
+    </div>
+  }
+</section>

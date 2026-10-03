@@ -1,0 +1,22 @@
+<section class="message-timeline" aria-label="Message timeline" data-testid="message-timeline">
+  @if (messages().length === 0) {
+    <p class="message-timeline__empty">No messages in this conversation.</p>
+  } @else {
+    <ol class="message-timeline__list">
+      @for (message of messages(); track message.id) {
+        <li
+          class="message"
+          [class.message--user]="isUser(message)"
+          [class.message--assistant]="!isUser(message)"
+          data-testid="message-item"
+        >
+          <div class="message__meta">
+            <span class="message__role">{{ labelFor(message) }}</span>
+            <span class="message__time">{{ message.createdAt | date: 'shortTime' }}</span>
+          </div>
+          <div class="message__bubble" data-testid="message-content">{{ message.content }}</div>
+        </li>
+      }
+    </ol>
+  }
+</section>

@@ -1,0 +1,27 @@
+<header class="conversation-header" data-testid="conversation-header">
+  <button
+    mat-stroked-button
+    type="button"
+    class="conversation-header__back"
+    data-testid="conversation-back"
+    (click)="onBack()"
+  >
+    ← Back
+  </button>
+
+  <div class="conversation-header__meta">
+    <h2 class="conversation-header__phone" data-testid="conversation-phone">
+      {{ conversation().patientPhone }}
+    </h2>
+
+    <div class="conversation-header__facts">
+      <span class="conversation-header__clinic" data-testid="conversation-clinic">
+        {{ conversation().clinicName ?? 'Unknown clinic' }}
+      </span>
+      <app-status-badge [status]="conversation().status" />
+      <span class="conversation-header__created" data-testid="conversation-created">
+        Created {{ conversation().createdAt | date: 'medium' }}
+      </span>
+    </div>
+  </div>
+</header>

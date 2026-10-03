@@ -1,0 +1,147 @@
+.ai-traces {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ai-traces__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.ai-traces__empty,
+.trace__no-tools {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.trace {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.trace__header,
+.tool-call__header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 0;
+  background: #fafafa;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.trace__header:hover,
+.tool-call__header:hover {
+  background: #f3f6fb;
+}
+
+.trace__turn {
+  font-weight: 600;
+}
+
+.trace__model,
+.trace__status {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 0.875rem;
+}
+
+.trace__chevron,
+.tool-call__chevron {
+  margin-left: auto;
+}
+
+.trace__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.trace__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.trace__stats dt {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.trace__stats dd {
+  margin: 0.15rem 0 0;
+}
+
+.trace__tools-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.tool-call {
+  border: 1px solid #ececec;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tool-call__header {
+  background: #fff;
+}
+
+.tool-call__name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tool-call__result {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tool-call__result--success {
+  color: #2e7d32;
+}
+
+.tool-call__result--error {
+  color: #b71c1c;
+}
+
+.tool-call__details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid #eee;
+  background: #fcfcfc;
+}
+
+.tool-call__section h5 {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.tool-call__section pre {
+  margin: 0;
+  padding: 0.65rem;
+  border-radius: 6px;
+  background: #f4f4f4;
+  overflow: auto;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}

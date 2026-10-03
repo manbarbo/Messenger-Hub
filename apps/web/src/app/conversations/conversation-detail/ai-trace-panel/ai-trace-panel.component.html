@@ -1,0 +1,92 @@
+<section class="ai-traces" aria-label="AI traces" data-testid="ai-trace-panel">
+  @if (!hasTraces()) {
+    <p class="ai-traces__empty">No AI traces recorded for this conversation.</p>
+  } @else {
+    <h3 class="ai-traces__title">AI Traces</h3>
+
+    @for (trace of traces(); track trace.id) {
+      <article class="trace" data-testid="ai-trace">
+        <button
+          type="button"
+          class="trace__header"
+          data-testid="ai-trace-toggle"
+          [attr.aria-expanded]="isTraceExpanded(trace.id)"
+          (click)="toggleTrace(trace.id)"
+        >
+          <span class="trace__turn">Turn {{ trace.turnIndex }}</span>
+          <span class="trace__model">{{ trace.model }}</span>
+          <span class="trace__status">{{ trace.finalStatus }}</span>
+          <span class="trace__chevron" aria-hidden="true">
+            {{ isTraceExpanded(trace.id) ? '▾' : '▸' }}
+          </span>
+        </button>
+
+        @if (isTraceExpanded(trace.id)) {
+          <div class="trace__body" data-testid="ai-trace-body">
+            <dl class="trace__stats">
+              <div>
+                <dt>Tokens</dt>
+                <dd>{{ trace.inputTokens }} in / {{ trace.outputTokens }} out</dd>
+              </div>
+              <div>
+                <dt>Latency</dt>
+                <dd>{{ trace.latencyMs }} ms</dd>
+              </div>
+              <div>
+                <dt>Cost</dt>
+                <dd>{{ formatCost(trace.costUsd) }}</dd>
+              </div>
+              <div>
+                <dt>Recorded</dt>
+                <dd>{{ trace.createdAt | date: 'medium' }}</dd>
+              </div>
+            </dl>
+
+            <h4 class="trace__tools-title">Tools called ({{ trace.toolsCalled.length }})</h4>
+
+            @if (trace.toolsCalled.length === 0) {
+              <p class="trace__no-tools">No tool calls in this turn.</p>
+            } @else {
+              @for (tool of trace.toolsCalled; track tool.name; let i = $index) {
+                <div class="tool-call" data-testid="tool-call">
+                  <button
+                    type="button"
+                    class="tool-call__header"
+                    data-testid="tool-call-toggle"
+                    [attr.aria-expanded]="isToolExpanded(trace, tool, i)"
+                    (click)="toggleTool(trace, tool, i)"
+                  >
+                    <span class="tool-call__name">{{ tool.name }}</span>
+                    <span
+                      class="tool-call__result"
+                      [class.tool-call__result--success]="tool.success"
+                      [class.tool-call__result--error]="!tool.success"
+                    >
+                      {{ tool.success ? 'Success' : 'Error' }}
+                    </span>
+                    <span class="tool-call__chevron" aria-hidden="true">
+                      {{ isToolExpanded(trace, tool, i) ? '▾' : '▸' }}
+                    </span>
+                  </button>
+
+                  @if (isToolExpanded(trace, tool, i)) {
+                    <div class="tool-call__details" data-testid="tool-call-details">
+                      <div class="tool-call__section">
+                        <h5>Arguments</h5>
+                        <pre data-testid="tool-call-arguments">{{ tool.arguments | json }}</pre>
+                      </div>
+                      <div class="tool-call__section">
+                        <h5>Result</h5>
+                        <pre data-testid="tool-call-result">{{ tool.result | json }}</pre>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+        }
+      </article>
+    }
+  }
+</section>

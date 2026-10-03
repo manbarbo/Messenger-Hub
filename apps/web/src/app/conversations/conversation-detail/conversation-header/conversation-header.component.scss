@@ -1,0 +1,26 @@
+.conversation-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.conversation-header__back {
+  align-self: flex-start;
+}
+
+.conversation-header__phone {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+.conversation-header__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 0.9rem;
+}
