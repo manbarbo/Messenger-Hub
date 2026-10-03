@@ -69,6 +69,21 @@ Key outcomes:
 
 ---
 
+## Phase 4 Extension Completion Notes (2026-10-03)
+
+T-4.4 (BullBoard Queue Monitoring) is **Completed**.
+
+| Task | Result |
+|------|--------|
+| T-4.4 BullBoard Queue Monitoring | `BullBoardService` infrastructure adapter mounts BullBoard at `/admin/queues` on the API process; both `message-processing` + DLQ; env-gated (dev on / prod off); optional basic auth |
+
+Key outcomes:
+- Queue review UI available at `http://localhost:3000/admin/queues` in development.
+- Backend: 410 tests pass (62 files), typecheck clean, lint clean.
+- Domain/app layers never import `@bull-board/*`; adapter-only integration reusing existing BullMQ queue instances.
+
+---
+
 ## Implementation Order
 
 ```text
@@ -139,6 +154,7 @@ Phase 9: Logging (Day 3 — Evening)
 | T-4.1 | Async Processing | Queue Service | Backend | Completed | 1–2 |
 | T-4.2 | Async Processing | Worker | Backend | Completed | 2–3 |
 | T-4.3 | Async Processing | Webhook Endpoint | Backend | Completed | 1–2 |
+| T-4.4 | Async Processing | BullBoard Queue Monitoring | Backend | Completed | 1–2 |
 | T-5.1 | API Layer | Controllers & Routes | Backend | Completed | 2–3 |
 | T-5.2 | API Layer | Error Handling & Validation | Backend | Completed | 1–2 |
 | T-6.1 | Frontend | Angular Foundation | Frontend | Completed | 2–3 |
@@ -154,7 +170,7 @@ Phase 9: Logging (Day 3 — Evening)
 | T-9.2 | Logging | Frontend Logging & Error Tracking | Frontend | Completed | 2–3 |
 | T-9.3 | Logging | Add Structured Logging Across Application | Full Stack | Completed | 4–6 |
 
-**Total estimated effort:** 46–66 hours (feasible in 2–3 days with AI assistance)
+**Total estimated effort:** 47–68 hours (feasible in 2–3 days with AI assistance; T-4.4 adds queue-review ops tooling)
 
 ---
 
@@ -196,6 +212,7 @@ T-2.3 (Commands) + T-2.4 (Queries)
 T-4.1 (Queue)
   └── T-4.2 (Worker)
   └── T-4.3 (Webhook)
+  └── T-4.4 (BullBoard Monitoring) — depends on T-4.1 (queues) + T-4.2 (DLQ)
 
 T-4.3 (Webhook) + T-5.1 (Controllers)
   └── T-5.2 (Error Handling)
@@ -235,6 +252,7 @@ T-9.1 (Backend Logging)
 | T-4.1 | `apps/api/src/infrastructure/queue/bullmq-queue.service.ts`, `apps/api/src/infrastructure/queue/queue.module.ts` |
 | T-4.2 | `apps/api/src/application/worker/message-processor.service.ts`, `apps/api/src/infrastructure/queue/bullmq-message.worker.ts`, `apps/api/src/application/worker/worker.module.ts`, `apps/api/src/worker-main.ts` |
 | T-4.3 | `apps/api/src/presentation/controllers/webhook.controller.ts`, `apps/api/src/presentation/presentation.module.ts` |
+| T-4.4 | `apps/api/src/infrastructure/queue/bull-board.service.ts`, `apps/api/src/infrastructure/queue/bullmq-queue.service.ts`, `apps/api/src/main.ts`, `apps/api/.env.example` |
 | T-5.1 | `apps/api/src/presentation/controllers/conversations.controller.ts`, `apps/api/src/presentation/controllers/simulator.controller.ts` |
 | T-5.2 | `apps/api/src/presentation/filters/`, `apps/api/src/presentation/pipes/` |
 | T-6.1 | `apps/web/src/app/`, routing, shared components, API service |

@@ -128,6 +128,16 @@ describe('BullMQQueueService', () => {
     expect(addMock).toHaveBeenCalledWith(MESSAGE_PROCESSING_DLQ, PROCESS_MESSAGE_JOB, job);
   });
 
+  it('getQueues() returns the main queue and DLQ instances', () => {
+    const service = createService();
+
+    const queues = service.getQueues();
+
+    expect(queues).toHaveLength(2);
+    expect(queues[0]?.name).toBe(MESSAGE_PROCESSING_QUEUE);
+    expect(queues[1]?.name).toBe(MESSAGE_PROCESSING_DLQ);
+  });
+
   it('propagates queue failures from push()', async () => {
     addMock.mockRejectedValueOnce(new Error('redis down'));
     const service = createService();

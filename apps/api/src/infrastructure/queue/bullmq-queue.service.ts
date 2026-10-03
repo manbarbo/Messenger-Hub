@@ -56,6 +56,10 @@ export class BullMQQueueService implements QueueService, OnModuleDestroy {
     await this.dlq.add(PROCESS_MESSAGE_JOB, job);
   }
 
+  getQueues(): Queue[] {
+    return [this.queue, this.dlq];
+  }
+
   async onModuleDestroy(): Promise<void> {
     await Promise.all([this.queue.close(), this.dlq.close()]);
     this.logger.info('BullMQ queues closed', {

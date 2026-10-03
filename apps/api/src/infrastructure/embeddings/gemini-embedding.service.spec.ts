@@ -27,8 +27,10 @@ function createMockLogger(): Logger {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
-function createConfigService(overrides: Record<string, string> = {}): ConfigService {
-  const values: Record<string, string> = {
+function createConfigService(
+  overrides: Record<string, string | undefined> = {},
+): ConfigService {
+  const values: Record<string, string | undefined> = {
     LLM_API_KEY: 'test-key',
     LLM_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     EMBEDDING_MODEL: 'gemini-embedding-001',

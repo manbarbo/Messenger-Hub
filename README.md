@@ -61,6 +61,8 @@ Implemented pipeline components:
 - MongoDB seed with sample conversations and AI traces — **implemented (T-7.2)**.
 
 > **Current async path:** `POST /webhooks/messages` validates and enqueues via `ProcessIncomingMessageCommand`; `QUEUE_SERVICE` is `BullMQQueueService` (`message-processing` + DLQ). Run the API (`pnpm --filter api start:dev`) and worker (`pnpm --filter api start:worker:dev`) as separate processes. Set `DEFAULT_CLINIC_ID` in `apps/api/.env` (or send `clinic_id` in the webhook body).
+>
+> **Queue review (BullBoard):** open `http://localhost:3000/admin/queues` while the API is running to inspect `message-processing` and `message-processing-dlq` jobs. Enabled by default in non-production (`BULL_BOARD_ENABLED`, `BULL_BOARD_PATH`, optional `BULL_BOARD_USERNAME`/`BULL_BOARD_PASSWORD`).
 
 ## Tech Stack
 

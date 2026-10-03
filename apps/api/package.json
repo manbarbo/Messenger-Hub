@@ -28,6 +28,8 @@
     "seed:mongo": "tsx scripts/seed-mongo.ts"
   },
   "dependencies": {
+    "@bull-board/api": "^9.10.2",
+    "@bull-board/express": "^9.10.2",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",

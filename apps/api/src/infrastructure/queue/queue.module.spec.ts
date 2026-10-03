@@ -3,6 +3,7 @@ import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { LOGGER, QUEUE_SERVICE } from '@domain/services';
+import { BullBoardService } from './bull-board.service';
 import { BullMQQueueService } from './bullmq-queue.service';
 import { QueueModule } from './queue.module';
 
@@ -12,13 +13,27 @@ const { queueConstructorMock } = vi.hoisted(() => ({
 
 vi.mock('bullmq', () => ({
   Queue: class MockQueue {
+    readonly name: string;
     readonly add = vi.fn();
     readonly close = vi.fn();
 
     constructor(name: string, opts: unknown) {
+      this.name = name;
       queueConstructorMock(name, opts);
     }
   },
+}));
+
+vi.mock('@bull-board/api', () => ({
+  createBullBoard: vi.fn(() => ({ setBasePath: vi.fn() })),
+}));
+
+vi.mock('@bull-board/api/bullMQAdapter', () => ({
+  BullMQAdapter: vi.fn(),
+}));
+
+vi.mock('@bull-board/express', () => ({
+  ExpressAdapter: vi.fn(() => ({ getRouter: vi.fn(() => ({})), setBasePath: vi.fn() })),
 }));
 
 const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -72,6 +87,14 @@ describe('QueueModule', () => {
     expect(moduleRef.get(BullMQQueueService, { strict: false })).toBeInstanceOf(
       BullMQQueueService,
     );
+  });
+
+  it('provides BullBoardService for queue review mounting', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [MockConfigModule, QueueModule],
+    }).compile();
+
+    expect(moduleRef.get(BullBoardService)).toBeInstanceOf(BullBoardService);
   });
 
   it('is marked @Global so application layers can inject QUEUE_SERVICE', () => {
