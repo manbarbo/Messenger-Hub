@@ -4,7 +4,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { Logger } from '@domain/services';
 import type { LLMChatParams } from '@domain/value-objects/llm-chat.vo';
 import { LLMProviderError } from '@domain/errors/llm-provider.error';
-import { GeminiLLMService } from './gemini-llm.service';
+import { GeminiLLMService, toSafeBaseURLHost } from './gemini-llm.service';
 
 const { createMock, openAIConstructor } = vi.hoisted(() => ({
   createMock: vi.fn(),
@@ -23,7 +23,12 @@ vi.mock('openai', () => ({
   },
 }));
 
-function createMockLogger(): Logger {
+function createMockLogger(): Logger & {
+  error: ReturnType<typeof vi.fn>;
+  debug: ReturnType<typeof vi.fn>;
+  info: ReturnType<typeof vi.fn>;
+  warn: ReturnType<typeof vi.fn>;
+} {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
@@ -41,8 +46,11 @@ function createConfigService(overrides: Record<string, string> = {}): ConfigServ
   } as unknown as ConfigService;
 }
 
-function createService(config: ConfigService = createConfigService()): GeminiLLMService {
-  return new GeminiLLMService(createMockLogger(), config);
+function createService(
+  config: ConfigService = createConfigService(),
+  logger: Logger = createMockLogger(),
+): GeminiLLMService {
+  return new GeminiLLMService(logger, config);
 }
 
 function chatParams(overrides: Partial<LLMChatParams> = {}): LLMChatParams {
@@ -241,7 +249,11 @@ describe('GeminiLLMService', () => {
           },
         ],
       },
-      { role: 'tool', content: '{"slots":[]}', tool_call_id: 'call_1' },
+      // Gemini OpenAI-compat rejects role:"tool"; adapter maps results to user messages.
+      {
+        role: 'user',
+        content: 'Resultado de la herramienta (call_1):\n{"slots":[]}',
+      },
     ]);
   });
 
@@ -253,6 +265,45 @@ describe('GeminiLLMService', () => {
       name: 'LLMProviderError',
       message: expect.stringContaining('Rate limit exceeded'),
     });
+  });
+
+  it('logs status, error body, and baseURL host on provider failure without the API key', async () => {
+    const logger = createMockLogger();
+    const providerError = Object.assign(new Error('400 status code (no body)'), {
+      status: 400,
+      error: { error: { code: 400, message: 'Invalid request', status: 'INVALID_ARGUMENT' } },
+      code: 'invalid_request_error',
+    });
+    createMock.mockRejectedValue(providerError);
+
+    const service = createService(createConfigService(), logger);
+    await expect(service.chat(chatParams())).rejects.toBeInstanceOf(LLMProviderError);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'LLM request failed',
+      expect.objectContaining({
+        context: 'GeminiLLMService',
+        model: 'gemini-2.5-flash',
+        error: expect.stringContaining('400 status code'),
+        status: 400,
+        code: 'invalid_request_error',
+        errorBody: providerError.error,
+        baseURLHost: 'generativelanguage.googleapis.com',
+      }),
+    );
+
+    const logPayload = logger.error.mock.calls[0][1] as Record<string, unknown>;
+    expect(JSON.stringify(logPayload)).not.toContain('test-key');
+    expect(logPayload.baseURLHost).toBe('generativelanguage.googleapis.com');
+    expect(String(logPayload.baseURLHost)).not.toContain('http');
+  });
+
+  it('toSafeBaseURLHost extracts host only and ignores invalid URLs', () => {
+    expect(toSafeBaseURLHost('https://generativelanguage.googleapis.com/v1beta/openai/')).toBe(
+      'generativelanguage.googleapis.com',
+    );
+    expect(toSafeBaseURLHost('not-a-url')).toBeUndefined();
+    expect(toSafeBaseURLHost(undefined)).toBeUndefined();
   });
 
   it('throws LLMProviderError when the response has no choices', async () => {

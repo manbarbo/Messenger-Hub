@@ -45,6 +45,50 @@ function parseToolArguments(raw: string): Record<string, unknown> {
   }
 }
 
+/**
+ * Safe host only for logs — never API keys, paths, or query strings.
+ */
+export function toSafeBaseURLHost(baseURL: string | undefined): string | undefined {
+  if (!baseURL) {
+    return undefined;
+  }
+  try {
+    return new URL(baseURL).host;
+  } catch {
+    return undefined;
+  }
+}
+
+interface ProviderErrorLike {
+  status?: number;
+  error?: unknown;
+  code?: string | number;
+}
+
+function extractProviderErrorDetails(error: unknown): Pick<
+  ProviderErrorLike,
+  'status' | 'error' | 'code'
+> {
+  if (!error || typeof error !== 'object') {
+    return {};
+  }
+
+  const candidate = error as ProviderErrorLike;
+  const details: Pick<ProviderErrorLike, 'status' | 'error' | 'code'> = {};
+
+  if (typeof candidate.status === 'number') {
+    details.status = candidate.status;
+  }
+  if (candidate.error !== undefined) {
+    details.error = candidate.error;
+  }
+  if (candidate.code !== undefined && (typeof candidate.code === 'string' || typeof candidate.code === 'number')) {
+    details.code = candidate.code;
+  }
+
+  return details;
+}
+
 function toOpenAITools(tools: LLMToolDefinition[]): ChatCompletionTool[] {
   return tools.map((tool) => ({
     type: 'function' as const,
@@ -58,17 +102,18 @@ function toOpenAITools(tools: LLMToolDefinition[]): ChatCompletionTool[] {
 
 function toOpenAIMessage(message: LLMMessage): ChatCompletionMessageParam {
   if (message.role === 'tool') {
+    // Gemini OpenAI-compatible endpoint rejects role:"tool" follow-ups (HTTP 400, empty body).
+    // Represent tool results as user messages so multi-turn tool calling works.
     return {
-      role: 'tool',
-      content: message.content,
-      tool_call_id: message.toolCallId ?? '',
+      role: 'user',
+      content: `Resultado de ${message.toolCallId ? `la herramienta (${message.toolCallId})` : 'la herramienta'}:\n${message.content}`,
     };
   }
 
   if (message.role === 'assistant' && message.toolCalls?.length) {
     return {
       role: 'assistant',
-      content: message.content,
+      content: message.content ?? '',
       tool_calls: message.toolCalls.map((toolCall) => ({
         id: toolCall.id,
         type: 'function' as const,
@@ -111,14 +156,17 @@ function toDomainToolCalls(
 @Injectable()
 export class GeminiLLMService implements LLMService {
   private readonly client: OpenAI;
+  private readonly baseURLHost: string | undefined;
 
   constructor(
     @Inject(LOGGER) private readonly logger: Logger,
     private readonly configService: ConfigService,
   ) {
+    const baseURL = this.configService.get<string>('LLM_BASE_URL');
+    this.baseURLHost = toSafeBaseURLHost(baseURL);
     this.client = new OpenAI({
       apiKey: this.configService.get<string>('LLM_API_KEY'),
-      baseURL: this.configService.get<string>('LLM_BASE_URL'),
+      baseURL,
     });
   }
 
@@ -131,6 +179,7 @@ export class GeminiLLMService implements LLMService {
       model,
       messageCount: params.messages.length,
       hasTools: Boolean(params.tools?.length),
+      baseURLHost: this.baseURLHost,
     });
 
     const request: ChatCompletionCreateParamsNonStreaming = {
@@ -161,6 +210,7 @@ export class GeminiLLMService implements LLMService {
           context: 'GeminiLLMService',
           model,
           reason: 'empty_response',
+          baseURLHost: this.baseURLHost,
         });
         throw new LLMProviderError('LLM returned an empty response');
       }
@@ -181,6 +231,7 @@ export class GeminiLLMService implements LLMService {
         costUsd,
         finishReason,
         hasToolCalls: toolCalls.length > 0,
+        baseURLHost: this.baseURLHost,
       });
 
       return {
@@ -195,10 +246,16 @@ export class GeminiLLMService implements LLMService {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown LLM provider error';
+      const { status, error: errorBody, code } = extractProviderErrorDetails(error);
+
       this.logger.error('LLM request failed', {
         context: 'GeminiLLMService',
         model,
         error: message,
+        status,
+        code,
+        errorBody,
+        baseURLHost: this.baseURLHost,
       });
 
       if (error instanceof LLMProviderError) {

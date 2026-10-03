@@ -166,7 +166,7 @@ MongoDB:
 
 **Context:** The assistant needs an LLM with tool calling capability. Options include OpenAI, Anthropic, Google Gemini, OpenRouter, or a local model via Ollama.
 
-**Decision:** Use Google Gemini (`gemini-2.5-flash`) via its OpenAI-compatible endpoint, abstracted behind an `LLMService` interface in the domain layer.
+**Decision:** Use Google Gemini (default model via `LLM_MODEL`, currently `gemini-3.8-flash`) via its OpenAI-compatible endpoint, abstracted behind an `LLMService` interface in the domain layer.
 
 **Rationale:**
 
@@ -177,6 +177,12 @@ MongoDB:
 - **Testability** — The `LLMService` interface allows injecting a mock implementation that returns pre-defined tool calls. Tests never hit the real LLM API.
 - **Provider swap** — If switching to OpenAI or Anthropic later, only the infrastructure implementation changes. The domain and application layers are unaffected.
 - **Cost visibility** — API responses include exact token counts and model information per call, enabling precise cost tracking.
+
+**Adapter notes (Gemini OpenAI-compat):**
+
+- Chat model is configured by `LLM_MODEL` (not hardcoded). Older models such as `gemini-2.5-flash` return HTTP 404 for new API keys; use a current Flash model.
+- Multi-turn tool calling: Gemini rejects OpenAI-style follow-ups with `role: "tool"` + `tool_call_id` (HTTP 400, empty body). `GeminiLLMService` maps tool results to labeled `role: "user"` messages in the outbound payload only. Domain messages still use `role: "tool"`.
+- Failure logs include `status`, `errorBody`, and `baseURLHost` (never the API key) to distinguish 400/404/429/503.
 
 **Why not OpenAI:**
 
