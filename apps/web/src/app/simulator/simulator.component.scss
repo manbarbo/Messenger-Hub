@@ -1,0 +1,62 @@
+.simulator {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 560px;
+}
+
+.simulator h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.simulator__subtitle {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.simulator__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.simulator__field-error {
+  margin: -0.5rem 0 0;
+  color: #b3261e;
+  font-size: 0.8rem;
+}
+
+.simulator__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.simulator__error {
+  padding: 0.85rem 1rem;
+  border: 1px solid #f1c0c0;
+  border-radius: 8px;
+  background: #fdf3f3;
+  color: #b3261e;
+}
+
+.simulator__success {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #c8e6c9;
+  border-radius: 8px;
+  background: #f1f8f1;
+}
+
+.simulator__success-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #1b5e20;
+  font-size: 0.9rem;
+}

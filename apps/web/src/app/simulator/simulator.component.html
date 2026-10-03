@@ -1,0 +1,102 @@
+<section class="simulator" aria-labelledby="simulator-title">
+  <h1 id="simulator-title">Patient Simulator</h1>
+  <p class="simulator__subtitle">
+    Send a test message as if it came from a patient over WhatsApp.
+  </p>
+
+  <form class="simulator__form" (ngSubmit)="send()" novalidate data-testid="simulator-form">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Patient phone</mat-label>
+      <input
+        matInput
+        data-testid="simulator-phone"
+        name="phone"
+        placeholder="+573001112233"
+        required
+        [value]="phone()"
+        [disabled]="loading()"
+        [attr.aria-invalid]="errors().phone ? true : null"
+        (input)="onPhoneInput($event)"
+      />
+    </mat-form-field>
+    @if (errors().phone) {
+      <p class="simulator__field-error" data-testid="simulator-phone-error" role="alert">
+        {{ errors().phone }}
+      </p>
+    }
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Clinic ID (optional)</mat-label>
+      <input
+        matInput
+        data-testid="simulator-clinic"
+        name="clinicId"
+        placeholder="Uses DEFAULT_CLINIC_ID when empty"
+        [value]="clinicId()"
+        [disabled]="loading()"
+        (input)="onClinicIdInput($event)"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Message</mat-label>
+      <textarea
+        matInput
+        data-testid="simulator-message"
+        name="message"
+        rows="4"
+        placeholder="Type a patient message…"
+        required
+        [value]="message()"
+        [disabled]="loading()"
+        [attr.aria-invalid]="errors().text ? true : null"
+        (input)="onMessageInput($event)"
+      ></textarea>
+    </mat-form-field>
+    @if (errors().text) {
+      <p class="simulator__field-error" data-testid="simulator-message-error" role="alert">
+        {{ errors().text }}
+      </p>
+    }
+
+    <div class="simulator__actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        data-testid="simulator-submit"
+        [disabled]="loading()"
+      >
+        @if (loading()) {
+          Sending…
+        } @else {
+          Send Message
+        }
+      </button>
+    </div>
+  </form>
+
+  @if (errorMessage(); as message) {
+    <div class="simulator__error" role="alert" data-testid="simulator-error">
+      {{ message }}
+    </div>
+  }
+
+  @if (result(); as result) {
+    <div class="simulator__success" role="status" data-testid="simulator-success">
+      <div class="simulator__success-copy">
+        <strong>Message accepted</strong>
+        <span>Conversation: {{ result.conversationId }}</span>
+        <span>Message ID: {{ result.messageId }}</span>
+      </div>
+      <button
+        mat-stroked-button
+        type="button"
+        data-testid="simulator-view-conversation"
+        (click)="viewConversation()"
+      >
+        View Conversation
+      </button>
+    </div>
+  }
+</section>

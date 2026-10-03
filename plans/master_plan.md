@@ -104,7 +104,7 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-6.1 | Frontend | Angular Foundation | Frontend | Completed | 2–3 |
 | T-6.2 | Frontend | Conversation Inbox | Frontend | Completed | 2–3 |
 | T-6.3 | Frontend | Conversation Detail + AI Traces | Frontend | Completed | 3–4 |
-| T-6.4 | Frontend | Patient Simulator | Frontend | Backlog | 1–2 |
+| T-6.4 | Frontend | Patient Simulator | Frontend | Completed | 1–2 |
 | T-7.1 | Seed Data | PostgreSQL Seed | Backend | Backlog | 1–2 |
 | T-7.2 | Seed Data | MongoDB Seed | Backend | Backlog | 1 |
 | T-8.1 | Testing | Backend Testing | Backend | Backlog | 3–4 |
