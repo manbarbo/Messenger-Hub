@@ -2,27 +2,36 @@ import 'reflect-metadata';
 import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
+  AI_TRACE_REPOSITORY,
   APPOINTMENT_REPOSITORY,
+  CONVERSATION_REPOSITORY,
   EMBEDDING_SERVICE,
   KNOWLEDGE_REPOSITORY,
+  MESSAGE_REPOSITORY,
   SLOT_REPOSITORY,
 } from '@domain/index';
+import { MongoService } from './database/mongo.service';
 import { PrismaService } from './database/prisma.service';
 import { InfrastructureModule } from './infrastructure.module';
 import { PrismaAppointmentRepository } from './repositories/prisma-appointment.repository';
 import { PrismaKnowledgeRepository } from './repositories/prisma-knowledge.repository';
 import { PrismaSlotRepository } from './repositories/prisma-slot.repository';
+import { MongoAITraceRepository } from './repositories/mongo-ai-trace.repository';
+import { MongoConversationRepository } from './repositories/mongo-conversation.repository';
+import { MongoMessageRepository } from './repositories/mongo-message.repository';
 
 const mockPrisma = {};
+const mockMongo = {};
 const mockEmbedding = { embed: async () => [0.1, 0.2] };
 
 @Global()
 @Module({
   providers: [
     { provide: PrismaService, useValue: mockPrisma },
+    { provide: MongoService, useValue: mockMongo },
     { provide: EMBEDDING_SERVICE, useValue: mockEmbedding },
   ],
-  exports: [PrismaService, EMBEDDING_SERVICE],
+  exports: [PrismaService, MongoService, EMBEDDING_SERVICE],
 })
 class MockInfrastructureDepsModule {}
 
@@ -33,28 +42,32 @@ describe('InfrastructureModule', () => {
     }).compile();
   }
 
-  it('binds AppointmentRepository to PrismaAppointmentRepository', async () => {
+  it('binds PostgreSQL repositories to Prisma adapters', async () => {
     const moduleRef = await createTestModule();
-    const repository = moduleRef.get(APPOINTMENT_REPOSITORY);
-    expect(repository).toBeInstanceOf(PrismaAppointmentRepository);
+    expect(moduleRef.get(APPOINTMENT_REPOSITORY)).toBeInstanceOf(PrismaAppointmentRepository);
+    expect(moduleRef.get(SLOT_REPOSITORY)).toBeInstanceOf(PrismaSlotRepository);
+    expect(moduleRef.get(KNOWLEDGE_REPOSITORY)).toBeInstanceOf(PrismaKnowledgeRepository);
   });
 
-  it('binds SlotRepository to PrismaSlotRepository', async () => {
+  it('binds MongoDB repositories to Mongo adapters', async () => {
     const moduleRef = await createTestModule();
-    const repository = moduleRef.get(SLOT_REPOSITORY);
-    expect(repository).toBeInstanceOf(PrismaSlotRepository);
+    expect(moduleRef.get(CONVERSATION_REPOSITORY)).toBeInstanceOf(MongoConversationRepository);
+    expect(moduleRef.get(MESSAGE_REPOSITORY)).toBeInstanceOf(MongoMessageRepository);
+    expect(moduleRef.get(AI_TRACE_REPOSITORY)).toBeInstanceOf(MongoAITraceRepository);
   });
 
-  it('binds KnowledgeRepository to PrismaKnowledgeRepository', async () => {
+  it('exports all repository tokens for application layers', async () => {
     const moduleRef = await createTestModule();
-    const repository = moduleRef.get(KNOWLEDGE_REPOSITORY);
-    expect(repository).toBeInstanceOf(PrismaKnowledgeRepository);
-  });
-
-  it('exports repository tokens for application layers', async () => {
-    const moduleRef = await createTestModule();
-    expect(moduleRef.get(APPOINTMENT_REPOSITORY)).toBeDefined();
-    expect(moduleRef.get(SLOT_REPOSITORY)).toBeDefined();
-    expect(moduleRef.get(KNOWLEDGE_REPOSITORY)).toBeDefined();
+    const tokens = [
+      APPOINTMENT_REPOSITORY,
+      SLOT_REPOSITORY,
+      KNOWLEDGE_REPOSITORY,
+      CONVERSATION_REPOSITORY,
+      MESSAGE_REPOSITORY,
+      AI_TRACE_REPOSITORY,
+    ];
+    for (const token of tokens) {
+      expect(moduleRef.get(token)).toBeDefined();
+    }
   });
 });
