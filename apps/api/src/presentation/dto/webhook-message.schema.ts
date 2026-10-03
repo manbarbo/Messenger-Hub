@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatZodErrors } from './zod-errors';
 
 export const WebhookMessageSchema = z.object({
   message_id: z.string().trim().min(1, 'message_id is required'),
@@ -12,13 +13,4 @@ export const WebhookMessageSchema = z.object({
 
 export type WebhookMessageInput = z.infer<typeof WebhookMessageSchema>;
 
-export function formatWebhookValidationErrors(
-  error: z.ZodError,
-): string {
-  return error.issues
-    .map((issue) => {
-      const path = issue.path.join('.');
-      return path ? `${path}: ${issue.message}` : issue.message;
-    })
-    .join(', ');
-}
+export const formatWebhookValidationErrors = formatZodErrors;

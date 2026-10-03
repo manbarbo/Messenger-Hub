@@ -596,7 +596,7 @@ Current Message:
 
 # 5. API Contracts
 
-> **Implementation status (2026-10-02):** `POST /webhooks/messages` is implemented (`presentation/controllers/webhook.controller.ts`). Dashboard endpoints (`GET /api/conversations`, simulator) remain target contracts for Phase 5.
+> **Implementation status (2026-10-02):** `POST /webhooks/messages`, `GET /api/conversations`, `GET /api/conversations/:id`, and `POST /api/simulator` are implemented (`presentation/controllers/`). Global exception filter and class-validator `ValidationPipe` remain T-5.2. Note: list responses omit `messageCount` (not computed by `ListConversationsHandler` yet).
 
 ## Base URL
 
