@@ -302,6 +302,8 @@ Worker (separate process):
 - Message ordering is not guaranteed (SQS FIFO is available but adds complexity). Acceptable because conversations are naturally sequential per phone number.
 - In-memory queue loses jobs on process restart — acceptable for development only (now superseded by BullMQ for the production binding).
 
+**Local DX note:** `pnpm dev` starts API, Worker, and Web via `concurrently`. The architectural decision (separate worker process) is unchanged; the default command simply launches both backend processes so jobs are not left in BullMQ `waiting`. Worker build/run uses `nest-cli.worker.json` with **top-level** `entryFile: "worker-main"` (Nest CLI ignores `entryFile` under `compilerOptions` and would otherwise run the API `main` entry). Concurrent API + worker webpack builds share `dist/` with `deleteOutDir: false` so bundles do not wipe each other.
+
 ---
 
 # 8. Idempotency: Database-Level Deduplication

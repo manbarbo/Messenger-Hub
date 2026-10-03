@@ -4,8 +4,9 @@
   "private": true,
   "description": "AI-powered scheduling assistant for clinics (WhatsApp simulator, RAG, appointments)",
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"pnpm --filter api start:dev\" \"pnpm --filter web start\"",
+    "dev": "concurrently -n api,worker,web -c blue,magenta,green \"pnpm --filter api start:dev\" \"pnpm --filter api start:worker:dev\" \"pnpm --filter web start\"",
     "dev:api": "pnpm --filter api start:dev",
+    "dev:worker": "pnpm --filter api start:worker:dev",
     "dev:web": "pnpm --filter web start",
     "build": "pnpm -r build",
     "test": "pnpm -r test",

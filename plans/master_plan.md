@@ -84,6 +84,14 @@ Key outcomes:
 
 ---
 
+## DX Fix Completion Notes (2026-10-03)
+
+FIX-dev-start-worker-process: `pnpm dev` now starts **api + worker + web** via `concurrently`. Root `package.json` also exposes `dev:worker`. Queue jobs no longer sit in Bull Board `waiting` when using the default local command. The worker remains a separate process (DECISIONS.md §7 unchanged); README documents startup and the `waiting` / `EADDRINUSE` troubleshooting paths.
+
+Follow-up: worker Nest CLI config fixed — `entryFile: "worker-main"` must be at the **root** of `apps/api/nest-cli.worker.json` (not under `compilerOptions`). `deleteOutDir: false` on both nest-cli configs avoids concurrent webpack builds overwriting each other’s `dist/*.js` bundles. Verified: `build:worker` emits `dist/worker-main.js` with `WorkerModule`; worker does not listen on port 3000.
+
+---
+
 ## Implementation Order
 
 ```text

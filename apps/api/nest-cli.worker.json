@@ -2,10 +2,10 @@
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
+  "entryFile": "worker-main",
   "compilerOptions": {
     "deleteOutDir": false,
     "webpack": true,
-    "tsConfigPath": "tsconfig.build.json",
-    "entryFile": "worker-main"
+    "tsConfigPath": "tsconfig.build.json"
   }
 }

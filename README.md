@@ -60,9 +60,13 @@ Implemented pipeline components:
 - Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, knowledge documents + embeddings) — **implemented (T-7.1)**.
 - MongoDB seed with sample conversations and AI traces — **implemented (T-7.2)**.
 
-> **Current async path:** `POST /webhooks/messages` validates and enqueues via `ProcessIncomingMessageCommand`; `QUEUE_SERVICE` is `BullMQQueueService` (`message-processing` + DLQ). Run the API (`pnpm --filter api start:dev`) and worker (`pnpm --filter api start:worker:dev`) as separate processes. Set `DEFAULT_CLINIC_ID` in `apps/api/.env` (or send `clinic_id` in the webhook body).
+> **Current async path:** `POST /webhooks/messages` validates and enqueues via `ProcessIncomingMessageCommand`; `QUEUE_SERVICE` is `BullMQQueueService` (`message-processing` + DLQ). The consumer runs in a **separate worker process** (`worker-main.ts` / `WorkerModule`). Default `pnpm dev` starts **API + Worker + Web** together. Set `DEFAULT_CLINIC_ID` in `apps/api/.env` (or send `clinic_id` in the webhook body).
 >
 > **Queue review (BullBoard):** open `http://localhost:3000/admin/queues` while the API is running to inspect `message-processing` and `message-processing-dlq` jobs. Enabled by default in non-production (`BULL_BOARD_ENABLED`, `BULL_BOARD_PATH`, optional `BULL_BOARD_USERNAME`/`BULL_BOARD_PASSWORD`).
+>
+> **Troubleshooting — jobs stuck in `waiting`:** Bull Board shows `waiting` when **no worker process** is attached to the queue (or Redis is unreachable). Confirm worker logs show `MessengerHub worker started` and `Worker listening on queue`. Verify `REDIS_HOST` / `REDIS_PORT` (and DB/LLM env) are available to both API and worker. Without the worker, Gemini/RAG never runs — only the webhook enqueue path executes.
+>
+> **Troubleshooting — worker `EADDRINUSE :::3000`:** The worker process must **not** bind an HTTP port. This error means Nest CLI ran the **API** entry (`dist/main.js`) instead of `dist/worker-main.js`. Cause: `entryFile` must sit at the **root** of `apps/api/nest-cli.worker.json` (not under `compilerOptions` — Nest CLI ignores nested `entryFile` and defaults to `main`). Check that `entryFile: "worker-main"` is top-level and that `pnpm --filter api build:worker` emits `dist/worker-main.js`.
 
 ## Tech Stack
 
@@ -198,15 +202,16 @@ pnpm --filter api mongo:indexes
 ### Running the Application
 
 ```bash
-# Start backend (API)
-pnpm run dev:api
-
-# Start frontend dashboard (in a separate terminal; features land in Phase 6)
-pnpm run dev:web
-
-# Or both in parallel
+# Full local stack (recommended): API + Worker + Web
 pnpm dev
+
+# Or start processes individually
+pnpm run dev:api      # NestJS API (webhook, dashboard, Bull Board)
+pnpm run dev:worker   # BullMQ consumer (LLM / RAG / appointments)
+pnpm run dev:web      # Angular dashboard + simulator
 ```
+
+> **Note:** The AI pipeline (LLM tool calling, RAG, appointment booking) runs only in the **worker process**. Starting the API alone leaves queue jobs in Bull Board `waiting` and never calls Gemini.
 
 ## Testing
 
