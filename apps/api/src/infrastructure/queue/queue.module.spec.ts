@@ -51,6 +51,24 @@ describe('QueueModule', () => {
     expect(moduleRef.get(QUEUE_SERVICE)).toBeInstanceOf(BullMQQueueService);
   });
 
+  it('shares a single BullMQQueueService instance for QUEUE_SERVICE and class token', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [MockConfigModule, QueueModule],
+    }).compile();
+
+    expect(moduleRef.get(BullMQQueueService)).toBe(moduleRef.get(QUEUE_SERVICE));
+  });
+
+  it('exports BullMQQueueService for the worker DLQ adapter', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [MockConfigModule, QueueModule],
+    }).compile();
+
+    expect(moduleRef.get(BullMQQueueService, { strict: false })).toBeInstanceOf(
+      BullMQQueueService,
+    );
+  });
+
   it('is marked @Global so application layers can inject QUEUE_SERVICE', () => {
     expect(Reflect.getMetadata('__module:global__', QueueModule)).toBe(true);
   });

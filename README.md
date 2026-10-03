@@ -60,7 +60,7 @@ Implemented pipeline components:
 - Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, knowledge documents + embeddings).
 - MongoDB seed with sample conversations and traces.
 
-> **Current queue binding:** `QUEUE_SERVICE` is bound to `BullMQQueueService` via the global `QueueModule` (main queue `message-processing` + DLQ `message-processing-dlq`). Redis is provisioned in `docker-compose.yml`. The background worker that consumes jobs is still pending (T-4.2).
+> **Current queue binding:** `QUEUE_SERVICE` is bound to `BullMQQueueService` via the global `QueueModule` (main queue `message-processing` + DLQ `message-processing-dlq`). Redis is provisioned in `docker-compose.yml`. Run the API (`pnpm --filter api start:dev`) and worker (`pnpm --filter api start:worker:dev`) as separate processes. The webhook endpoint (T-4.3) is still pending.
 
 ## Tech Stack
 
@@ -85,7 +85,7 @@ Implemented pipeline components:
 The backend implements Clean Architecture (Presentation → Application → Domain ← Infrastructure) principles to isolate the AI logic from business rules and persistence:
 
 - **Data Segregation**: PostgreSQL handles the core transactional domain (Clinics, Slots, Appointments, pgvector for RAG) where ACID properties and constraints are mandatory. MongoDB handles high-volume, flexible schema data (Chat history, AI execution traces).
-- **Asynchronous Processing**: Webhooks push events to a BullMQ queue (Redis), processed by a background worker to handle LLM latency gracefully. The BullMQ adapter is in place; the worker consumer lands in T-4.2.
+- **Asynchronous Processing**: Webhooks push events to a BullMQ queue (Redis). A separate worker process consumes jobs, runs the AI orchestrator, and persists responses/traces. Queue + worker are in place; the webhook endpoint lands in T-4.3.
 - **Fail-Safe Tool Calling**: AI outputs are treated as untrusted input. They are validated against domain rules (e.g., timezone parsing in UTC-5, valid clinic IDs) before hitting the database.
 - **Idempotency**: Handled at the database level to prevent duplicate processing.
 
@@ -96,7 +96,7 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 1 | Foundation (scaffolding, domain, databases) | Completed |
 | 2 | Backend core data (PG/Mongo repos, CQRS) | Completed |
 | 3 | AI pipeline (LLM, RAG, tool validation, orchestration) | Completed |
-| 4 | Async processing (BullMQ queue done, worker, webhook) | In Progress |
+| 4 | Async processing (BullMQ queue + worker done, webhook) | In Progress |
 | 5 | API layer (controllers, routes, error handling) | Backlog |
 | 6 | Frontend (Angular dashboard + simulator) | Backlog |
 | 7 | Seed data (full PG knowledge base + Mongo samples) | Backlog |

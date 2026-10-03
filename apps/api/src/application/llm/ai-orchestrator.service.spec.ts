@@ -146,6 +146,28 @@ describe('AIOrchestratorService', () => {
     ]);
   });
 
+  it('does not duplicate the current user message when it is already persisted in history', async () => {
+    messageRepository.findByConversationId.mockResolvedValue([
+      {
+        id: 'm-in',
+        conversationId: 'conv-1',
+        clinicId: 'clinic-1',
+        direction: 'inbound',
+        role: 'user',
+        content: 'Hola, quiero una cita',
+        messageId: 'wamid.001',
+        createdAt: new Date('2026-10-02T15:00:00Z'),
+      },
+    ]);
+    llmService.setResponses([buildLlmResult({ content: 'ok' })]);
+
+    await orchestrator.processTurn('conv-1', 'clinic-1', 'Hola, quiero una cita');
+
+    const userMessages = llmService.calls[0].messages.filter((m) => m.role === 'user');
+    expect(userMessages).toHaveLength(1);
+    expect(userMessages[0].content).toBe('Hola, quiero una cita');
+  });
+
   it('feeds validation errors back to the LLM and continues the loop', async () => {
     toolValidator.validate.mockResolvedValue({
       valid: false,

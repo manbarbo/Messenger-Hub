@@ -14,7 +14,12 @@ export default defineConfig({
       provider: 'v8',
       reportsDirectory: './coverage',
       include: ['src/**/*.ts'],
-      exclude: ['src/main.ts', 'src/**/*.module.ts', 'src/**/index.ts'],
+      exclude: [
+        'src/main.ts',
+        'src/worker-main.ts',
+        'src/**/*.module.ts',
+        'src/**/index.ts',
+      ],
     },
   },
   plugins: [

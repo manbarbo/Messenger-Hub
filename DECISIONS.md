@@ -238,7 +238,7 @@ The OpenAI SDK reads `LLM_BASE_URL` to route requests to Gemini. The model name,
 
 # 7. Asynchronous Processing: Queue + Worker Pattern
 
-**Status:** Accepted — BullMQ adapter landed in T-4.1 (worker consumer still pending T-4.2)
+**Status:** Accepted — BullMQ adapter (T-4.1) + worker consumer (T-4.2) implemented; webhook endpoint still pending (T-4.3)
 
 **Context:** The webhook endpoint must respond fast (< 200ms). LLM processing takes 5–30 seconds (depending on tool calls and iterations). Blocking the HTTP response for LLM latency is unacceptable.
 
@@ -246,13 +246,15 @@ The OpenAI SDK reads `LLM_BASE_URL` to route requests to Gemini. The model name,
 
 **Implementation status:**
 
-- `QUEUE_SERVICE` is bound to `BullMQQueueService` (`infrastructure/queue/bullmq-queue.service.ts`) via `QueueModule` (global, imported by `AppModule`).
+- `QUEUE_SERVICE` is bound to `BullMQQueueService` via global `QueueModule` (main queue `message-processing` + DLQ `message-processing-dlq`).
 - `ProcessIncomingMessageHandler` calls `queueService.push(job)` after inserting the message.
-- Main queue: `message-processing` (3 attempts, exponential backoff 1s, retain 100 complete / 500 failed).
-- DLQ queue: `message-processing-dlq` — `BullMQQueueService.pushToDlq()` moves permanently failed job payloads for inspection.
-- Redis connection comes from `REDIS_HOST` / `REDIS_PORT` (defaults `localhost:6379`).
-- `InMemoryQueueService` remains as a test/dev implementation of the same interface; it is no longer the production binding.
-- **No worker consumes the queue yet** — `AIOrchestratorService.processTurn` exists but is not wired to a BullMQ consumer (T-4.2).
+- Main queue retry: 3 attempts, exponential backoff 1s; retain 100 complete / 500 failed.
+- Worker: separate NestJS context (`worker-main.ts` + `WorkerModule`) runs `BullMQMessageWorker` (raw BullMQ `Worker` in infrastructure) → `MessageProcessorService` → `AIOrchestratorService.processTurn`.
+- DLQ: after the final failed attempt, the worker moves the job payload to `message-processing-dlq` via `BullMQQueueService.pushToDlq`.
+- Idempotency: outbound assistant messages use deterministic `messageId` (`assistant:${inboundMessageId}`); processor skips if already present.
+- Redis connection from `REDIS_HOST` / `REDIS_PORT` (defaults `localhost:6379`).
+- `InMemoryQueueService` remains as a test/dev implementation; production binding is BullMQ.
+- AI traces (tokens/latency/tools) are saved by the orchestrator during `processTurn`.
 
 **Flow (target):**
 

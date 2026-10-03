@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import type { AITrace, AITraceFinalStatus, AITraceToolCall } from '@domain/entities/ai-trace.entity';
+import type { Message } from '@domain/entities/message.entity';
 import { ConversationStatus } from '@domain/enums/conversation-status.enum';
 import { LLMProviderError } from '@domain/errors/llm-provider.error';
 import { SlotAlreadyBookedError } from '@domain/errors/slot-already-booked.error';
@@ -104,7 +105,11 @@ export class AIOrchestratorService {
     const clinic = await this.clinicRepository.findById(clinicId);
     const clinicName = clinic?.name ?? 'la clínica';
     const history = await this.messageRepository.findByConversationId(conversationId);
-    const messages = this.promptBuilder.buildTurnMessages(clinicName, history, userMessage);
+    const messages = this.promptBuilder.buildTurnMessages(
+      clinicName,
+      this.dropPersistedCurrentMessage(history, userMessage),
+      userMessage,
+    );
 
     let toolsCalled: AITraceToolCall[] = [];
     let usage = createEmptyUsage();
@@ -182,6 +187,23 @@ export class AIOrchestratorService {
       }
       throw error;
     }
+  }
+
+  /**
+   * The webhook persists the inbound message before enqueueing.
+   * Exclude it from history so PromptBuilder does not duplicate the current turn.
+   */
+  private dropPersistedCurrentMessage(history: Message[], userMessage: string): Message[] {
+    if (history.length === 0) {
+      return history;
+    }
+
+    const last = history[history.length - 1];
+    if (last.role === 'user' && last.content === userMessage) {
+      return history.slice(0, -1);
+    }
+
+    return history;
   }
 
   private async processToolCall(

@@ -4,7 +4,10 @@ import { BullMQQueueService } from './bullmq-queue.service';
 
 @Global()
 @Module({
-  providers: [{ provide: QUEUE_SERVICE, useClass: BullMQQueueService }],
-  exports: [QUEUE_SERVICE],
+  providers: [
+    BullMQQueueService,
+    { provide: QUEUE_SERVICE, useExisting: BullMQQueueService },
+  ],
+  exports: [BullMQQueueService, QUEUE_SERVICE],
 })
 export class QueueModule {}
