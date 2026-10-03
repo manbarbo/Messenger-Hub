@@ -68,4 +68,26 @@ describe('domain errors', () => {
     expect(err.name).toBe('LLMIterationLimitError');
     expect(err.maxIterations).toBe(5);
   });
+
+  it('NotFoundError variants fall back to (unknown) when id is omitted', () => {
+    expect(new SlotNotFoundError().message).toContain('(unknown)');
+    expect(new AppointmentNotFoundError().message).toContain('(unknown)');
+    expect(new ConversationNotFoundError().message).toContain('(unknown)');
+    expect(new ClinicNotFoundError().message).toContain('(unknown)');
+  });
+
+  it('NotFoundError variants accept a custom message', () => {
+    expect(new SlotNotFoundError('slot-1', 'custom slot message').message).toBe(
+      'custom slot message',
+    );
+    expect(new AppointmentNotFoundError('apt-1', 'custom apt message').message).toBe(
+      'custom apt message',
+    );
+    expect(new ConversationNotFoundError('conv-1', 'custom conv message').message).toBe(
+      'custom conv message',
+    );
+    expect(new ClinicNotFoundError('clinic-1', 'custom clinic message').message).toBe(
+      'custom clinic message',
+    );
+  });
 });

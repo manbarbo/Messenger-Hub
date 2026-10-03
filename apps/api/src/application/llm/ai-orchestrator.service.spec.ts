@@ -6,6 +6,7 @@ import type { Clinic } from '@domain/entities/clinic.entity';
 import type { Message } from '@domain/entities/message.entity';
 import { ConversationStatus } from '@domain/enums/conversation-status.enum';
 import { LLMProviderError } from '@domain/errors/llm-provider.error';
+import { SlotAlreadyBookedError } from '@domain/errors/slot-already-booked.error';
 import type {
   AITraceRepository,
   ClinicRepository,
@@ -410,5 +411,148 @@ describe('AIOrchestratorService', () => {
     expect(trace.outputTokens).toBe(30);
     expect(trace.latencyMs).toBe(45);
     expect(trace.costUsd).toBeCloseTo(0.0015, 6);
+  });
+
+  it('falls back to a default response when the LLM returns null content and no tools', async () => {
+    llmService.setResponses([buildLlmResult({ content: null, finishReason: 'stop' })]);
+
+    const result = await orchestrator.processTurn('conv-1', 'clinic-1', 'hola');
+
+    expect(result).toEqual({
+      response: 'No tengo esa información.',
+      status: ConversationStatus.RESOLVED_BY_AI,
+    });
+  });
+
+  it('feeds executeTool unknown-tool errors back to the LLM as failed tool results', async () => {
+    toolValidator.validate.mockResolvedValue({
+      valid: true,
+      parsed: { pregunta: 'x' },
+    });
+    llmService.setResponses([
+      buildLlmResult({
+        toolCalls: [
+          {
+            id: 'call-unknown',
+            name: 'inventar_tool',
+            arguments: { pregunta: 'x' },
+          },
+        ],
+      }),
+      buildLlmResult({ content: 'Lo siento, no conozco esa herramienta.' }),
+    ]);
+
+    const result = await orchestrator.processTurn('conv-1', 'clinic-1', 'hola');
+
+    expect(result.status).toBe(ConversationStatus.RESOLVED_BY_AI);
+    const toolMessage = llmService.calls[1].messages.find((m) => m.role === 'tool');
+    expect(toolMessage?.content).toContain('Unknown tool: inventar_tool');
+
+    const trace = expectSavedTrace('resuelta_por_ia');
+    expect(trace.toolsCalled[0]).toMatchObject({
+      name: 'inventar_tool',
+      success: false,
+      result: expect.stringContaining('Unknown tool: inventar_tool'),
+    });
+  });
+
+  it('continues escalation when the force-escalate side-effect fails', async () => {
+    llmService.setResponses([buildLlmResult()]);
+    vi.spyOn(llmService, 'chat').mockRejectedValueOnce(
+      new LLMProviderError('Rate limit exceeded'),
+    );
+    toolValidator.validate.mockResolvedValue({
+      valid: false,
+      error: 'Unknown tool: escalar_a_humano',
+    });
+
+    const result = await orchestrator.processTurn('conv-1', 'clinic-1', 'hola');
+
+    expect(result.status).toBe(ConversationStatus.ESCALATED);
+    expect(result.response).toContain('humano');
+  });
+
+  it('reports SlotAlreadyBookedError with a patient-friendly tool message', async () => {
+    toolValidator.validate.mockResolvedValue({
+      valid: true,
+      parsed: {
+        slotId: 'slot-9',
+        doctorId: 'doc-9',
+        paciente_telefono: '+573001234567',
+      },
+    });
+    commandBus.execute.mockRejectedValue(new SlotAlreadyBookedError('slot-9'));
+    llmService.setResponses([
+      buildLlmResult({
+        toolCalls: [buildToolCall({ id: 'call-book', name: 'agendar_cita', arguments: {} })],
+      }),
+      buildLlmResult({ content: 'El horario ya no está disponible.' }),
+    ]);
+
+    const result = await orchestrator.processTurn('conv-1', 'clinic-1', 'agendar cita');
+
+    expect(result.status).toBe(ConversationStatus.RESOLVED_BY_AI);
+    const toolMessage = llmService.calls[1].messages.find((m) => m.role === 'tool');
+    expect(toolMessage?.content).toContain('El horario ya fue reservado');
+  });
+
+  it('maps non-Error tool failures to a generic tool message', async () => {
+    toolValidator.validate.mockResolvedValue({
+      valid: true,
+      parsed: { pregunta: 'horario' },
+    });
+    knowledgeRepository.search.mockRejectedValue('string failure');
+    llmService.setResponses([
+      buildLlmResult({ toolCalls: [buildToolCall()] }),
+      buildLlmResult({ content: 'No pude consultar.' }),
+    ]);
+
+    const result = await orchestrator.processTurn('conv-1', 'clinic-1', 'hola');
+
+    expect(result.status).toBe(ConversationStatus.RESOLVED_BY_AI);
+    const toolMessage = llmService.calls[1].messages.find((m) => m.role === 'tool');
+    expect(toolMessage?.content).toBe('Error al ejecutar la herramienta');
+  });
+
+  it('passes paciente_nombre through when provided for agendar_cita', async () => {
+    toolValidator.validate.mockResolvedValue({
+      valid: true,
+      parsed: {
+        slotId: 'slot-9',
+        doctorId: 'doc-9',
+        paciente_telefono: '+573001234567',
+        paciente_nombre: 'Ana Pérez',
+      },
+    });
+    commandBus.execute.mockResolvedValue({
+      id: 'apt-1',
+      clinicId: 'clinic-1',
+      doctorId: 'doc-9',
+      slotId: 'slot-9',
+      patientPhone: '+573001234567',
+      patientName: 'Ana Pérez',
+      status: 'CONFIRMED',
+    });
+    llmService.setResponses([
+      buildLlmResult({
+        toolCalls: [
+          buildToolCall({
+            id: 'call-book',
+            name: 'agendar_cita',
+            arguments: {
+              doctorId: 'doc-9',
+              slotId: 'slot-9',
+              paciente_telefono: '+573001234567',
+              paciente_nombre: 'Ana Pérez',
+            },
+          }),
+        ],
+      }),
+    ]);
+
+    await orchestrator.processTurn('conv-1', 'clinic-1', 'agendar cita');
+
+    const command = commandBus.execute.mock.calls[0][0];
+    expect(command.patientName).toBe('Ana Pérez');
   });
 });

@@ -25,6 +25,18 @@ describe('AppointmentStatus', () => {
       false,
     );
   });
+
+  it('rejects CONFIRMED → CONFIRMED', () => {
+    expect(canTransitionAppointment(AppointmentStatus.CONFIRMED, AppointmentStatus.CONFIRMED)).toBe(
+      false,
+    );
+  });
+
+  it('returns false for unknown appointment statuses', () => {
+    expect(canTransitionAppointment('UNKNOWN' as AppointmentStatus, AppointmentStatus.CANCELLED)).toBe(
+      false,
+    );
+  });
 });
 
 describe('ConversationStatus', () => {
@@ -56,6 +68,21 @@ describe('ConversationStatus', () => {
     ).toBe(false);
     expect(
       canTransitionConversation(ConversationStatus.ESCALATED, ConversationStatus.ACTIVE),
+    ).toBe(false);
+  });
+
+  it('rejects transitions to the same conversation status', () => {
+    expect(
+      canTransitionConversation(ConversationStatus.ACTIVE, ConversationStatus.ACTIVE),
+    ).toBe(false);
+    expect(
+      canTransitionConversation(ConversationStatus.RESOLVED_BY_AI, ConversationStatus.RESOLVED_BY_AI),
+    ).toBe(false);
+  });
+
+  it('returns false for unknown conversation statuses', () => {
+    expect(
+      canTransitionConversation('unknown' as ConversationStatus, ConversationStatus.ACTIVE),
     ).toBe(false);
   });
 });

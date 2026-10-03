@@ -42,6 +42,14 @@ describe('MongoDB index specs', () => {
     });
   });
 
+  it('converts specs without options to key-only descriptions', () => {
+    const description = toIndexDescription({
+      collection: 'messages',
+      key: { conversationId: 1, createdAt: 1 },
+    });
+    expect(description).toEqual({ key: { conversationId: 1, createdAt: 1 } });
+  });
+
   it('has no duplicate collection+key pairs', () => {
     const seen = new Set(
       MONGO_INDEX_SPECS.map((s) => `${s.collection}:${JSON.stringify(s.key)}`),

@@ -185,4 +185,14 @@ describe('ConversationsController', () => {
     expect(response.body.error).toBe('ConversationNotFoundError');
     expect(response.body.message).toContain('missing-1');
   });
+
+  it('rethrows non-NotFound query errors without mapping them', async () => {
+    await createApp();
+    const unexpected = new Error('database exploded');
+    queryBus.execute.mockRejectedValue(unexpected);
+
+    await request(app.getHttpServer())
+      .get('/api/conversations/conv-1')
+      .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+  });
 });

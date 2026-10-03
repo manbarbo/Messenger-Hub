@@ -231,4 +231,36 @@ describe('DomainExceptionFilter', () => {
       message: 'limit must be an integer between 1 and 100',
     });
   });
+
+  it('falls back to exception name/message when HttpException body is null', () => {
+    const { host, status, json } = createHost();
+    const exception = new BadRequestException(null as unknown as string);
+
+    filter.catch(exception, host);
+
+    expect(status).toHaveBeenCalledWith(400);
+    const body = json.mock.calls[0][0] as { error: string; message: string };
+    expect(body).toEqual(
+      expect.objectContaining({
+        message: expect.any(String),
+      }),
+    );
+    expect(body.error).toBeTruthy();
+  });
+
+  it('normalizes non-string non-object HttpException bodies to { error, message }', () => {
+    const { host, status, json } = createHost();
+    const exception = new BadRequestException(42 as unknown as string);
+
+    filter.catch(exception, host);
+
+    expect(status).toHaveBeenCalledWith(400);
+    const body = json.mock.calls[0][0] as { error: string; message: string };
+    expect(body).toEqual(
+      expect.objectContaining({
+        message: expect.any(String),
+      }),
+    );
+    expect(body.error).toBeTruthy();
+  });
 });

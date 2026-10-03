@@ -29,8 +29,26 @@ Phases 1–3 are **Completed**. What exists in the codebase today:
 - Phase 5 is complete: dashboard/simulator controllers (T-5.1) + global `DomainExceptionFilter` (T-5.2). Request validation is Zod-based in controllers; class-validator pipe was not added (see T-5.2 plan notes).
 - Orchestrator returns `ConversationStatus`; worker persists it via `ConversationRepository.updateStatus` after `processTurn`.
 - PostgreSQL seed (T-7.1) and MongoDB sample seed (T-7.2) are complete: 2 clinics, 8 doctors, 4 specialties, 2-week weekday slots, 12 knowledge documents with `gemini-embedding-001` (768 dims); 3 sample conversations (resolved_by_ai / appointment_booked / escalated) with 20 messages and 6 AI traces.
-- Coverage gate (≥ 75%) is Phase 8 (T-8.3).
+- Coverage gate (≥ 75%) is complete (Phase 8): backend 98%+, frontend 95%+, thresholds enforced in vitest and Angular test configs.
 - IVFFlat index lives in migration SQL, not `schema.prisma` (documented in DECISIONS.md §24).
+
+---
+
+## Phase 8 Completion Notes (2026-10-02)
+
+Phase 8 (Testing & Quality) is **Completed**.
+
+| Task | Result |
+|------|--------|
+| T-8.1 Backend Testing | 56 spec files / 350 tests; coverage 98.44% stmts, 95.13% branch, 100% funcs, 98.44% lines |
+| T-8.2 Frontend Testing | 11 spec files / 56 tests; coverage 95.3% stmts, 90.19% branch, 85.71% funcs, 96.93% lines |
+| T-8.3 Coverage Verification | `pnpm test` passes both apps; 75% thresholds enforced; no real LLM/DB/queue in unit tests |
+
+Key fixes in Phase 8:
+- Aligned Angular web coverage tooling (`@vitest/coverage-v8@^5.0.0` to match vitest 5.x from Angular 22 builder)
+- Added lifecycle tests for `MongoService` / `PrismaService`
+- Closed remaining backend branch gaps (orchestrator edge cases, filter HttpException fallbacks, worker DLQ/completed paths, Gemini error wrapping)
+- Coverage thresholds configured in `apps/api/vitest.config.ts` and `apps/web/angular.json`
 
 ---
 
@@ -107,9 +125,9 @@ Phase 8: Testing & Quality (Day 3 — Afternoon)
 | T-6.4 | Frontend | Patient Simulator | Frontend | Completed | 1–2 |
 | T-7.1 | Seed Data | PostgreSQL Seed | Backend | Completed | 1–2 |
 | T-7.2 | Seed Data | MongoDB Seed | Backend | Completed | 1 |
-| T-8.1 | Testing | Backend Testing | Backend | Backlog | 3–4 |
-| T-8.2 | Testing | Frontend Testing | Frontend | Backlog | 2–3 |
-| T-8.3 | Testing | Coverage Verification | Full Stack | Backlog | 1 |
+| T-8.1 | Testing | Backend Testing | Backend | Completed | 3–4 |
+| T-8.2 | Testing | Frontend Testing | Frontend | Completed | 2–3 |
+| T-8.3 | Testing | Coverage Verification | Full Stack | Completed | 1 |
 
 **Total estimated effort:** 42–60 hours (feasible in 2–3 days with AI assistance)
 

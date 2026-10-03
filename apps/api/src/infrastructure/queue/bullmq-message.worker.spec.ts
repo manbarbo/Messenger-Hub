@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { MessageProcessorService } from '@application/worker/message-processor.service';
 import type { QueueJob } from '@domain/value-objects/queue-job.vo';
@@ -141,5 +142,60 @@ describe('BullMQMessageWorker', () => {
     const failed = getFailedHandler(workerInstances[0]);
     expect(() => failed(null, new Error('no job'))).not.toThrow();
     expect(queueService.pushToDlq).not.toHaveBeenCalled();
+  });
+
+  it('uses DEFAULT_MAX_ATTEMPTS when job options omit attempts', async () => {
+    const worker = createWorker();
+    await worker.onModuleInit();
+
+    const data: QueueJob = {
+      conversationId: 'conv-1',
+      messageId: 'wamid.002',
+      from: '+573001112233',
+      text: 'hola',
+      clinicId: 'clinic-1',
+    };
+    const failed = getFailedHandler(workerInstances[0]);
+    failed({ id: 'job-2', data, opts: {}, attemptsMade: 3 }, new Error('default attempts'));
+
+    expect(queueService.pushToDlq).toHaveBeenCalledWith(data);
+  });
+
+  it('logs DLQ push failures without throwing', async () => {
+    const errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    queueService.pushToDlq.mockRejectedValue(new Error('dlq down'));
+    const worker = createWorker();
+    await worker.onModuleInit();
+
+    const failed = getFailedHandler(workerInstances[0]);
+    failed(
+      {
+        id: 'job-3',
+        data: { messageId: 'm3' },
+        opts: { attempts: 1 },
+        attemptsMade: 1,
+      },
+      new Error('boom'),
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(queueService.pushToDlq).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to push job job-3 to DLQ'));
+    errorSpy.mockRestore();
+  });
+
+  it('logs completed jobs', async () => {
+    const debugSpy = vi.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+    const worker = createWorker();
+    await worker.onModuleInit();
+
+    const completedCall = workerInstances[0].on.mock.calls.find(([event]) => event === 'completed');
+    expect(completedCall).toBeDefined();
+    completedCall?.[1]({ id: 'job-done' });
+
+    expect(debugSpy).toHaveBeenCalledWith('Job job-done completed');
+    debugSpy.mockRestore();
   });
 });

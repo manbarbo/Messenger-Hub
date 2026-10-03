@@ -136,4 +136,47 @@ describe('GeminiEmbeddingService', () => {
 
     await expect(service.embed('consulta')).rejects.toBeInstanceOf(ValidationError);
   });
+
+  it('falls back to default embedding model and dimensions when config is missing', async () => {
+    const vector = createVector();
+    createMock.mockResolvedValue({ data: [{ embedding: vector }] });
+
+    const service = new GeminiEmbeddingService(
+      createConfigService({
+        EMBEDDING_MODEL: undefined,
+        EMBEDDING_DIMENSIONS: undefined,
+      }),
+    );
+    await service.embed('consulta');
+
+    expect(createMock).toHaveBeenCalledWith({
+      model: 'gemini-embedding-001',
+      input: 'consulta',
+      dimensions: 768,
+    });
+  });
+
+  it('falls back to default dimensions when EMBEDDING_DIMENSIONS is invalid', async () => {
+    const vector = createVector();
+    createMock.mockResolvedValue({ data: [{ embedding: vector }] });
+
+    const service = new GeminiEmbeddingService(
+      createConfigService({ EMBEDDING_DIMENSIONS: 'not-a-number' }),
+    );
+    await service.embed('consulta');
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ dimensions: 768 }),
+    );
+  });
+
+  it('wraps non-Error provider failures as LLMProviderError', async () => {
+    createMock.mockRejectedValue('provider string failure');
+    const service = new GeminiEmbeddingService(createConfigService());
+
+    await expect(service.embed('consulta')).rejects.toMatchObject({
+      name: 'LLMProviderError',
+      message: expect.stringContaining('Unknown embedding provider error'),
+    });
+  });
 });

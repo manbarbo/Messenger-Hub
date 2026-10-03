@@ -29,6 +29,7 @@ describe('DateRange', () => {
 
   it('rejects invalid dates', () => {
     expect(() => new DateRange(new Date('invalid'), end)).toThrow(ValidationError);
+    expect(() => new DateRange(start, new Date('invalid'))).toThrow(ValidationError);
   });
 });
 

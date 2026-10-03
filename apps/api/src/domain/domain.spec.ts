@@ -13,6 +13,7 @@ import {
   SLOT_REPOSITORY,
 } from './index';
 import { AppointmentCreatedEvent } from './events/appointment-created.event';
+import { ConversationEscalatedEvent } from './events/conversation-escalated.event';
 
 describe('DI tokens', () => {
   it('creates unique symbols for repositories and services', () => {
@@ -40,6 +41,21 @@ describe('domain events', () => {
     expect(event.eventName).toBe('appointment.created');
     expect(event.aggregateId).toBe('apt-1');
     expect(event.clinicId).toBe('clinic-1');
+    expect(event.occurredAt).toBeInstanceOf(Date);
+  });
+
+  it('ConversationEscalatedEvent exposes payload and occurredAt', () => {
+    const event = new ConversationEscalatedEvent(
+      'conv-1',
+      'clinic-1',
+      '+573001112233',
+      'Límite de iteraciones',
+    );
+    expect(event.eventName).toBe('conversation.escalated');
+    expect(event.aggregateId).toBe('conv-1');
+    expect(event.clinicId).toBe('clinic-1');
+    expect(event.patientPhone).toBe('+573001112233');
+    expect(event.reason).toBe('Límite de iteraciones');
     expect(event.occurredAt).toBeInstanceOf(Date);
   });
 });

@@ -379,4 +379,42 @@ describe('GeminiLLMService', () => {
       }),
     );
   });
+
+  it('wraps non-Error provider failures as LLMProviderError', async () => {
+    createMock.mockRejectedValue('provider string failure');
+
+    const service = createService();
+    await expect(service.chat(chatParams())).rejects.toMatchObject({
+      name: 'LLMProviderError',
+      message: expect.stringContaining('Unknown LLM provider error'),
+    });
+  });
+
+  it('defaults missing usage tokens to zero and finishReason to unknown', async () => {
+    createMock.mockResolvedValue({
+      model: 'gemini-2.5-flash',
+      choices: [{ message: { role: 'assistant', content: 'ok' } }],
+    });
+
+    const service = createService();
+    const result = await service.chat(chatParams());
+
+    expect(result.inputTokens).toBe(0);
+    expect(result.outputTokens).toBe(0);
+    expect(result.finishReason).toBe('unknown');
+    expect(result.model).toBe('gemini-2.5-flash');
+  });
+
+  it('falls back to configured model when provider omits model', async () => {
+    createMock.mockResolvedValue({
+      choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 1, completion_tokens: 1 },
+    });
+
+    const service = createService(createConfigService({ LLM_MODEL: 'configured-model' }));
+    const result = await service.chat(chatParams());
+
+    expect(result.model).toBe('configured-model');
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ model: 'configured-model' }));
+  });
 });
