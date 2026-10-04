@@ -72,6 +72,28 @@ Key outcomes:
 
 ---
 
+## Phase 10 Planned (2026-10-03)
+
+Phase 10 (RAG Knowledge Base Management) is **Planned** — task plans live in `plans/backlog/`.
+
+Enable operators to **consult, create, update, and delete** RAG `knowledge_documents` from the dashboard (admin CRUD for the clinic knowledge base used by semantic search). Patient-facing tool-calling flows are unchanged; this phase is a management surface on top of the existing RAG pipeline.
+
+| Task | Layer | Scope |
+|------|-------|--------|
+| T-10.1 Backend Knowledge Repository CRUD | Backend | Extend `KnowledgeRepository` + Prisma adapter (`findById`, `findMany` paginated, `update`, `delete`); `KnowledgeDocumentNotFoundError`; embedding via raw SQL on update |
+| T-10.2 Backend Knowledge CQRS | Backend | Create/Update/Delete commands + List/Get queries; handlers use `EMBEDDING_SERVICE` (re-embed when title/content change); structured logging |
+| T-10.3 Backend Knowledge REST API | Backend | `KnowledgeDocumentsController` — `GET/POST /api/knowledge`, `GET/PATCH/DELETE /api/knowledge/:id`; Zod validation; DESIGN.md + README |
+| T-10.4 Frontend Knowledge List | Frontend | `/knowledge` route + nav; clinic/category filters; table + pagination + detail consult; `ApiService.listKnowledgeDocuments` |
+| T-10.5 Frontend Knowledge CRUD | Frontend | Create/edit form, delete confirmation, list refresh; form validation; tests |
+
+Key design constraints for Phase 10:
+- All documents are scoped by `clinicId` (multi-tenant RAG).
+- Embeddings use the same model/dims as search (`gemini-embedding-001`, 768) — re-embed on create and on title/content update (AGENTS.md §14).
+- Repository stays persistence-only; command handlers orchestrate embedding via domain `EmbeddingService` port.
+- No Prisma schema change required for basic CRUD (`embedding` column already exists).
+
+---
+
 ## Phase 4 Extension Completion Notes (2026-10-03)
 
 T-4.4 (BullBoard Queue Monitoring) is **Completed**.
@@ -145,6 +167,13 @@ Phase 9: Logging (Day 3 — Evening)
   9.1 Backend Logging System
   9.2 Frontend Logging & Error Tracking
   9.3 Add Structured Logging Across Application
+
+Phase 10: RAG Knowledge Base Management
+  10.1 Backend Knowledge Repository CRUD
+  10.2 Backend Knowledge CQRS Commands & Queries
+  10.3 Backend Knowledge REST API
+  10.4 Frontend Knowledge Base List
+  10.5 Frontend Knowledge CRUD UI
 ```
 
 ---
@@ -185,8 +214,13 @@ Phase 9: Logging (Day 3 — Evening)
 | T-9.4 | Clinic Dropdowns | Backend List Clinics (`GET /api/clinics`) | Backend | Completed | 1–2 |
 | T-9.5 | Clinic Dropdowns | Frontend Clinic Dropdowns (Simulator + Conversation List) | Frontend | Completed | 2 |
 | T-9.6 | Chat Simulator | Chat-like Patient Simulator | Frontend | Completed | 2–3 |
+| T-10.1 | Knowledge Base | Backend Knowledge Repository CRUD | Backend | Backlog | 2–3 |
+| T-10.2 | Knowledge Base | Backend Knowledge CQRS Commands & Queries | Backend | Backlog | 3–4 |
+| T-10.3 | Knowledge Base | Backend Knowledge REST API | Backend | Backlog | 2–3 |
+| T-10.4 | Knowledge Base | Frontend Knowledge Base List | Frontend | Backlog | 2–3 |
+| T-10.5 | Knowledge Base | Frontend Knowledge CRUD UI | Frontend | Backlog | 3–4 |
 
-**Total estimated effort:** 52–75 hours (feasible in 2–3 days with AI assistance; T-4.4 adds queue-review ops tooling)
+**Total estimated effort:** 64–90 hours (Phases 1–9 completed; Phase 10 adds ~12–17h for RAG document management)
 
 ---
 
@@ -249,6 +283,13 @@ T-9.1 (Backend Logging)
   └── T-9.4 (Backend List Clinics) — depends on T-2.4 (ClinicRepository)
   └── T-9.5 (Frontend Clinic Dropdowns) — depends on T-9.4 (GET /api/clinics)
   └── T-9.6 (Chat-like Simulator) — depends on T-9.5 + T-6.3 (message timeline)
+
+T-3.2 (RAG Pipeline) + T-9.1 (Logging)
+  └── T-10.1 (Knowledge Repository CRUD)
+        └── T-10.2 (Knowledge CQRS)
+              └── T-10.3 (Knowledge REST API)
+                    └── T-10.4 (Frontend Knowledge List) — also depends on T-9.4 (clinics dropdown)
+                          └── T-10.5 (Frontend Knowledge CRUD)
 ```
 
 ---
@@ -289,6 +330,11 @@ T-9.1 (Backend Logging)
 | T-9.4 | `apps/api/src/application/queries/list-clinics/`, `apps/api/src/presentation/controllers/clinics.controller.ts`, `apps/api/src/infrastructure/repositories/prisma-clinic.repository.ts` |
 | T-9.5 | `apps/web/src/app/core/models/clinic.model.ts`, `apps/web/src/app/simulator/`, `apps/web/src/app/conversations/conversation-list/` |
 | T-9.6 | `apps/web/src/app/simulator/` (chat mode, polling, timeline reuse) |
+| T-10.1 | `apps/api/src/domain/errors/knowledge-document-not-found.error.ts`, `apps/api/src/domain/repositories/knowledge.repository.ts`, `apps/api/src/infrastructure/repositories/prisma-knowledge.repository.ts` |
+| T-10.2 | `apps/api/src/application/commands/knowledge-documents/`, `apps/api/src/application/queries/knowledge-documents/`, `apps/api/src/application/application.module.ts` |
+| T-10.3 | `apps/api/src/presentation/controllers/knowledge-documents.controller.ts`, `apps/api/src/presentation/dto/knowledge-document.schema.ts`, `DESIGN.md`, `README.md` |
+| T-10.4 | `apps/web/src/app/core/models/knowledge-document.model.ts`, `apps/web/src/app/core/api.service.ts`, `apps/web/src/app/knowledge/knowledge-list/`, `apps/web/src/app/app.routes.ts`, `apps/web/src/app/shared/layout/layout.component.html` |
+| T-10.5 | `apps/web/src/app/knowledge/knowledge-form/`, `apps/web/src/app/knowledge/knowledge-list/`, `apps/web/src/app/shared/confirm-dialog/`, `apps/web/src/app/core/api.service.ts` |
 
 ---
 
