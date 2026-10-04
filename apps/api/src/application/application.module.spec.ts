@@ -16,7 +16,7 @@ import {
   QUEUE_SERVICE,
   SLOT_REPOSITORY,
 } from '@domain/index';
-import { LOGGER } from '@domain/services';
+import { EMBEDDING_SERVICE, LOGGER } from '@domain/services';
 import {
   ApplicationModule,
   COMMAND_HANDLERS,
@@ -26,6 +26,9 @@ import {
 import { CancelAppointmentHandler } from './commands/cancel-appointment/cancel-appointment.handler';
 import { CreateAppointmentHandler } from './commands/create-appointment/create-appointment.handler';
 import { ProcessIncomingMessageHandler } from './commands/process-incoming-message/process-incoming-message.handler';
+import { CreateKnowledgeDocumentHandler } from './commands/knowledge-documents/create-knowledge-document/create-knowledge-document.handler';
+import { DeleteKnowledgeDocumentHandler } from './commands/knowledge-documents/delete-knowledge-document/delete-knowledge-document.handler';
+import { UpdateKnowledgeDocumentHandler } from './commands/knowledge-documents/update-knowledge-document/update-knowledge-document.handler';
 import { AppointmentCancelledEventHandler } from './event-handlers/appointment-cancelled.handler';
 import { AppointmentCreatedEventHandler } from './event-handlers/appointment-created.handler';
 import { AIOrchestratorService } from './llm/ai-orchestrator.service';
@@ -33,6 +36,8 @@ import { ToolValidator } from './llm/tool-validator';
 import { GetConversationDetailHandler } from './queries/get-conversation-detail/get-conversation-detail.handler';
 import { ListClinicsHandler } from './queries/list-clinics/list-clinics.handler';
 import { ListConversationsHandler } from './queries/list-conversations/list-conversations.handler';
+import { GetKnowledgeDocumentHandler } from './queries/knowledge-documents/get-knowledge-document/get-knowledge-document.handler';
+import { ListKnowledgeDocumentsHandler } from './queries/knowledge-documents/list-knowledge-documents/list-knowledge-documents.handler';
 
 const noop = async () => undefined;
 
@@ -56,6 +61,7 @@ const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(
   providers: [
     { provide: ConfigService, useValue: mockConfigService },
     { provide: LOGGER, useValue: mockLogger },
+    { provide: EMBEDDING_SERVICE, useValue: { embed: vi.fn().mockResolvedValue([0.1]) } },
     { provide: SLOT_REPOSITORY, useValue: { findById: noop, findAvailable: noop } },
     {
       provide: APPOINTMENT_REPOSITORY,
@@ -77,11 +83,23 @@ const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(
     { provide: DOCTOR_REPOSITORY, useValue: { existsByClinicAndSpecialty: noop } },
     { provide: EVENT_PUBLISHER, useValue: { publish: noop } },
     { provide: QUEUE_SERVICE, useValue: { push: noop } },
-    { provide: KNOWLEDGE_REPOSITORY, useValue: { search: noop } },
+    {
+      provide: KNOWLEDGE_REPOSITORY,
+      useValue: {
+        search: noop,
+        findByClinicId: noop,
+        findById: noop,
+        findMany: noop,
+        create: noop,
+        update: noop,
+        delete: noop,
+      },
+    },
   ],
   exports: [
     ConfigService,
     LOGGER,
+    EMBEDDING_SERVICE,
     SLOT_REPOSITORY,
     APPOINTMENT_REPOSITORY,
     CONVERSATION_REPOSITORY,
@@ -102,11 +120,16 @@ describe('ApplicationModule', () => {
       CreateAppointmentHandler,
       CancelAppointmentHandler,
       ProcessIncomingMessageHandler,
+      CreateKnowledgeDocumentHandler,
+      UpdateKnowledgeDocumentHandler,
+      DeleteKnowledgeDocumentHandler,
     ]);
     expect(QUERY_HANDLERS).toEqual([
       ListConversationsHandler,
       GetConversationDetailHandler,
       ListClinicsHandler,
+      ListKnowledgeDocumentsHandler,
+      GetKnowledgeDocumentHandler,
     ]);
     expect(EVENT_HANDLERS).toEqual([
       AppointmentCreatedEventHandler,
@@ -134,6 +157,21 @@ describe('ApplicationModule', () => {
       GetConversationDetailHandler,
     );
     expect(moduleRef.get(ListClinicsHandler)).toBeInstanceOf(ListClinicsHandler);
+    expect(moduleRef.get(CreateKnowledgeDocumentHandler)).toBeInstanceOf(
+      CreateKnowledgeDocumentHandler,
+    );
+    expect(moduleRef.get(UpdateKnowledgeDocumentHandler)).toBeInstanceOf(
+      UpdateKnowledgeDocumentHandler,
+    );
+    expect(moduleRef.get(DeleteKnowledgeDocumentHandler)).toBeInstanceOf(
+      DeleteKnowledgeDocumentHandler,
+    );
+    expect(moduleRef.get(ListKnowledgeDocumentsHandler)).toBeInstanceOf(
+      ListKnowledgeDocumentsHandler,
+    );
+    expect(moduleRef.get(GetKnowledgeDocumentHandler)).toBeInstanceOf(
+      GetKnowledgeDocumentHandler,
+    );
     expect(moduleRef.get(ToolValidator)).toBeInstanceOf(ToolValidator);
     expect(moduleRef.get(AIOrchestratorService)).toBeInstanceOf(AIOrchestratorService);
   });
