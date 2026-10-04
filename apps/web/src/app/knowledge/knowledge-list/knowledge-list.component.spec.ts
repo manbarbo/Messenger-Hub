@@ -54,6 +54,9 @@ describe('KnowledgeListComponent', () => {
   let listKnowledgeDocuments: ReturnType<typeof vi.fn>;
   let getKnowledgeDocument: ReturnType<typeof vi.fn>;
   let listClinics: ReturnType<typeof vi.fn>;
+  let createKnowledgeDocument: ReturnType<typeof vi.fn>;
+  let updateKnowledgeDocument: ReturnType<typeof vi.fn>;
+  let deleteKnowledgeDocument: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<KnowledgeListComponent>;
   let component: KnowledgeListComponent;
 
@@ -61,13 +64,25 @@ describe('KnowledgeListComponent', () => {
     listKnowledgeDocuments = vi.fn().mockReturnValue(of(listResponse));
     getKnowledgeDocument = vi.fn().mockReturnValue(of(detail));
     listClinics = vi.fn().mockReturnValue(of(clinics));
+    createKnowledgeDocument = vi.fn().mockReturnValue(of(detail));
+    updateKnowledgeDocument = vi.fn().mockReturnValue(of({ ...detail, title: 'Updated' }));
+    deleteKnowledgeDocument = vi.fn().mockReturnValue(
+      of({ deleted: true, documentId: 'doc-1' }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [KnowledgeListComponent],
       providers: [
         {
           provide: ApiService,
-          useValue: { listKnowledgeDocuments, getKnowledgeDocument, listClinics },
+          useValue: {
+            listKnowledgeDocuments,
+            getKnowledgeDocument,
+            listClinics,
+            createKnowledgeDocument,
+            updateKnowledgeDocument,
+            deleteKnowledgeDocument,
+          },
         },
         provideNoopAnimations(),
       ],
@@ -94,12 +109,15 @@ describe('KnowledgeListComponent', () => {
     expect(component.documents()).toEqual(documents);
   });
 
-  it('renders knowledge document rows with title, category, and updated date', () => {
+  it('renders knowledge document rows with title, category, and actions', () => {
     const rows = html().querySelectorAll('[data-testid="knowledge-row"]');
     expect(rows.length).toBe(2);
     expect((rows[0] as HTMLElement).textContent).toContain('Horarios de Atención');
     expect((rows[0] as HTMLElement).textContent).toContain('horarios');
-    expect((rows[1] as HTMLElement).textContent).toContain('Sedes');
+    expect(html().querySelector('[data-testid="knowledge-view"]')).toBeTruthy();
+    expect(html().querySelector('[data-testid="knowledge-edit"]')).toBeTruthy();
+    expect(html().querySelector('[data-testid="knowledge-delete"]')).toBeTruthy();
+    expect(html().querySelector('[data-testid="knowledge-new-document"]')).toBeTruthy();
   });
 
   it('shows a loading skeleton during fetch', () => {
@@ -249,5 +267,122 @@ describe('KnowledgeListComponent', () => {
     expect(html().querySelector('[data-testid="knowledge-clinics-error"]')?.textContent).toContain(
       'clinics down',
     );
+  });
+
+  describe('create flow', () => {
+    it('opens create form and creates a document then reloads the list', () => {
+      (html().querySelector('[data-testid="knowledge-new-document"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(component.formOpen()).toBe(true);
+      expect(component.formMode()).toBe('create');
+
+      listKnowledgeDocuments.mockClear();
+      component.onFormSubmit({
+        mode: 'create',
+        clinicId: 'clinic-1',
+        title: 'Nueva politica',
+        content: 'Contenido de politica',
+        category: 'politicas',
+      });
+      fixture.detectChanges();
+
+      expect(createKnowledgeDocument).toHaveBeenCalledWith({
+        clinicId: 'clinic-1',
+        title: 'Nueva politica',
+        content: 'Contenido de politica',
+        category: 'politicas',
+      });
+      expect(component.formOpen()).toBe(false);
+      expect(listKnowledgeDocuments).toHaveBeenCalled();
+    });
+
+    it('shows save error when create fails', () => {
+      createKnowledgeDocument.mockReturnValue(
+        throwError(() => new AppApiError({ error: 'Error', message: 'create failed', status: 400 })),
+      );
+
+      component.openCreateForm();
+      component.onFormSubmit({
+        mode: 'create',
+        clinicId: 'clinic-1',
+        title: 'T',
+        content: 'C',
+        category: 'cat',
+      });
+      fixture.detectChanges();
+
+      expect(component.formOpen()).toBe(true);
+      expect(component.formError()).toBe('create failed');
+      expect(html().querySelector('[data-testid="knowledge-form-error"]')).toBeTruthy();
+    });
+  });
+
+  describe('edit flow', () => {
+    it('loads detail then opens edit form and updates the document', () => {
+      (html().querySelector('[data-testid="knowledge-edit"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(getKnowledgeDocument).toHaveBeenCalledWith('doc-1');
+      expect(component.formMode()).toBe('edit');
+      expect(component.editingDocument()).toEqual(detail);
+
+      listKnowledgeDocuments.mockClear();
+      component.onFormSubmit({
+        mode: 'edit',
+        id: 'doc-1',
+        title: 'Horarios 2026',
+        content: 'Nuevo contenido',
+        category: 'horarios',
+      });
+      fixture.detectChanges();
+
+      expect(updateKnowledgeDocument).toHaveBeenCalledWith('doc-1', {
+        title: 'Horarios 2026',
+        content: 'Nuevo contenido',
+        category: 'horarios',
+      });
+      expect(component.formOpen()).toBe(false);
+      expect(listKnowledgeDocuments).toHaveBeenCalled();
+    });
+  });
+
+  describe('delete flow', () => {
+    it('opens confirm dialog, deletes, and reloads the list', () => {
+      (html().querySelector('[data-testid="knowledge-delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(component.deleteTarget()).toEqual(documents[0]);
+      expect(html().querySelector('[data-testid="knowledge-delete-dialog"]')).toBeTruthy();
+
+      listKnowledgeDocuments.mockClear();
+      component.confirmDelete();
+      fixture.detectChanges();
+
+      expect(deleteKnowledgeDocument).toHaveBeenCalledWith('doc-1');
+      expect(component.deleteTarget()).toBeNull();
+      expect(listKnowledgeDocuments).toHaveBeenCalled();
+    });
+
+    it('cancel delete does not call the API', () => {
+      component.requestDelete(documents[0]);
+      component.cancelDelete();
+      fixture.detectChanges();
+
+      expect(deleteKnowledgeDocument).not.toHaveBeenCalled();
+      expect(component.deleteTarget()).toBeNull();
+    });
+
+    it('shows delete error when API fails', () => {
+      deleteKnowledgeDocument.mockReturnValue(
+        throwError(() => new AppApiError({ error: 'Error', message: 'delete failed', status: 500 })),
+      );
+
+      component.requestDelete(documents[0]);
+      component.confirmDelete();
+      fixture.detectChanges();
+
+      expect(component.deleteError()).toBe('delete failed');
+      expect(html().querySelector('[data-testid="knowledge-delete-error"]')).toBeTruthy();
+    });
   });
 });

@@ -1,0 +1,123 @@
+<div
+  class="knowledge-form-overlay"
+  data-testid="knowledge-form-overlay"
+>
+  <form
+    class="knowledge-form"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="knowledge-form-title"
+    (ngSubmit)="onSubmit()"
+  >
+    <header class="knowledge-form__header">
+      <h2 id="knowledge-form-title" data-testid="knowledge-form-title">
+        {{ isEdit() ? 'Edit document' : 'New document' }}
+      </h2>
+      <button
+        mat-icon-button
+        type="button"
+        data-testid="knowledge-form-close"
+        aria-label="Close form"
+        (click)="onCancel()"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+    </header>
+
+    @if (saveError(); as saveError) {
+      <p class="knowledge-form__error" data-testid="knowledge-form-error" role="alert">
+        {{ saveError }}
+      </p>
+    }
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="knowledge-form__field">
+      <mat-label>Clinic</mat-label>
+      <mat-select
+        data-testid="knowledge-form-clinic"
+        [value]="clinicId()"
+        [disabled]="isEdit() || saving()"
+        (selectionChange)="onClinicChange($event.value)"
+      >
+        <mat-option value="">Select a clinic</mat-option>
+        @for (clinic of clinics(); track clinic.id) {
+          <mat-option [value]="clinic.id">{{ clinic.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (errors().clinicId; as clinicIdError) {
+      <p class="knowledge-form__field-error" data-testid="knowledge-form-clinic-error" role="alert">
+        {{ clinicIdError }}
+      </p>
+    }
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="knowledge-form__field">
+      <mat-label>Title</mat-label>
+      <input
+        matInput
+        data-testid="knowledge-form-title-input"
+        [value]="title()"
+        [disabled]="saving()"
+        (input)="onTitleInput($event)"
+      />
+    </mat-form-field>
+    @if (errors().title; as titleError) {
+      <p class="knowledge-form__field-error" data-testid="knowledge-form-title-error" role="alert">
+        {{ titleError }}
+      </p>
+    }
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="knowledge-form__field">
+      <mat-label>Category</mat-label>
+      <input
+        matInput
+        data-testid="knowledge-form-category"
+        [value]="category()"
+        [disabled]="saving()"
+        (input)="onCategoryInput($event)"
+      />
+    </mat-form-field>
+    @if (errors().category; as categoryError) {
+      <p class="knowledge-form__field-error" data-testid="knowledge-form-category-error" role="alert">
+        {{ categoryError }}
+      </p>
+    }
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="knowledge-form__field">
+      <mat-label>Content</mat-label>
+      <textarea
+        matInput
+        rows="6"
+        data-testid="knowledge-form-content"
+        [value]="content()"
+        [disabled]="saving()"
+        (input)="onContentInput($event)"
+      ></textarea>
+    </mat-form-field>
+    @if (errors().content; as contentError) {
+      <p class="knowledge-form__field-error" data-testid="knowledge-form-content-error" role="alert">
+        {{ contentError }}
+      </p>
+    }
+
+    <footer class="knowledge-form__actions">
+      <button
+        mat-button
+        type="button"
+        data-testid="knowledge-form-cancel"
+        [disabled]="saving()"
+        (click)="onCancel()"
+      >
+        Cancel
+      </button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        data-testid="knowledge-form-submit"
+        [disabled]="saving()"
+      >
+        {{ saving() ? 'Saving…' : isEdit() ? 'Save changes' : 'Create document' }}
+      </button>
+    </footer>
+  </form>
+</div>

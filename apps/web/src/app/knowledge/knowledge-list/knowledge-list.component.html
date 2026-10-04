@@ -2,6 +2,19 @@
   <header class="knowledge-base__header">
     <h1 id="knowledge-base-title">Knowledge Base</h1>
 
+    <div class="knowledge-base__header-actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        data-testid="knowledge-new-document"
+        [disabled]="clinicFilter().length === 0"
+        (click)="openCreateForm()"
+      >
+        New document
+      </button>
+    </div>
+
     <div class="knowledge-base__filters">
       <mat-form-field
         appearance="outline"
@@ -100,7 +113,7 @@
               <td>{{ document.title }}</td>
               <td>{{ document.category }}</td>
               <td>{{ document.updatedAt | date: 'medium' }}</td>
-              <td>
+              <td class="knowledge-table__actions">
                 <button
                   mat-stroked-button
                   type="button"
@@ -108,6 +121,23 @@
                   (click)="openDetail(document)"
                 >
                   View
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  data-testid="knowledge-edit"
+                  (click)="openEditForm(document)"
+                >
+                  Edit
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  color="warn"
+                  data-testid="knowledge-delete"
+                  (click)="requestDelete(document)"
+                >
+                  Delete
                 </button>
               </td>
             </tr>
@@ -181,7 +211,58 @@
         <article class="knowledge-detail__content" data-testid="knowledge-detail-content">
           {{ document.content }}
         </article>
+        <footer class="knowledge-detail__actions">
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="knowledge-detail-edit"
+            (click)="openEditForm(document)"
+          >
+            Edit
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            color="warn"
+            data-testid="knowledge-detail-delete"
+            (click)="requestDelete(document)"
+          >
+            Delete
+          </button>
+        </footer>
       }
     </div>
   </div>
+}
+
+@if (formOpen()) {
+  <app-knowledge-form
+    data-testid="knowledge-form"
+    [mode]="formMode()"
+    [clinics]="clinics()"
+    [initial]="editingDocument()"
+    [defaultClinicId]="clinicFilter()"
+    [saving]="formSaving()"
+    [saveError]="formError()"
+    (cancelled)="closeForm()"
+    (submitted)="onFormSubmit($event)"
+  />
+}
+
+@if (deleteTarget(); as target) {
+  <app-confirm-dialog
+    data-testid="knowledge-delete-dialog"
+    title="Delete document"
+    [message]="'Delete “' + target.title + '”? This removes it from RAG retrieval for this clinic.'"
+    confirmLabel="Delete"
+    [danger]="true"
+    [busy]="deleteBusy()"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+  @if (deleteError(); as deleteError) {
+    <p class="knowledge-base__filter-error knowledge-delete-error" data-testid="knowledge-delete-error" role="alert">
+      {{ deleteError }}
+    </p>
+  }
 }

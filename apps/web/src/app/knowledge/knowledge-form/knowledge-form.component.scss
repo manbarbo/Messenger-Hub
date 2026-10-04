@@ -1,0 +1,54 @@
+.knowledge-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.knowledge-form {
+  width: min(560px, 100%);
+  max-height: min(90vh, 800px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.knowledge-form__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.knowledge-form__header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.knowledge-form__error,
+.knowledge-form__field-error {
+  margin: 0;
+  color: #b3261e;
+  font-size: 0.8rem;
+}
+
+.knowledge-form__field {
+  width: 100%;
+}
+
+.knowledge-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

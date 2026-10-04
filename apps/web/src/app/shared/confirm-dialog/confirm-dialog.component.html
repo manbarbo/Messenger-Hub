@@ -1,0 +1,35 @@
+<div class="confirm-dialog-overlay" data-testid="confirm-dialog-overlay">
+  <div
+    class="confirm-dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="confirm-dialog-title"
+    aria-describedby="confirm-dialog-message"
+  >
+    <h2 id="confirm-dialog-title" data-testid="confirm-dialog-title">{{ title() }}</h2>
+    <p id="confirm-dialog-message" class="confirm-dialog__message" data-testid="confirm-dialog-message">
+      {{ message() }}
+    </p>
+    <footer class="confirm-dialog__actions">
+      <button
+        mat-button
+        type="button"
+        data-testid="confirm-dialog-cancel"
+        [disabled]="busy()"
+        (click)="onCancel()"
+      >
+        {{ cancelLabel() }}
+      </button>
+      <button
+        mat-flat-button
+        [color]="danger() ? 'warn' : 'primary'"
+        type="button"
+        data-testid="confirm-dialog-confirm"
+        [disabled]="busy()"
+        (click)="onConfirm()"
+      >
+        {{ busy() ? 'Working…' : confirmLabel() }}
+      </button>
+    </footer>
+  </div>
+</div>

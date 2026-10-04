@@ -12,9 +12,12 @@ import type {
   SimulatorResponse,
 } from './models/api.model';
 import type {
+  CreateKnowledgeDocumentBody,
+  DeleteKnowledgeDocumentResult,
   KnowledgeDocumentDetail,
   KnowledgeDocumentSummary,
   ListKnowledgeDocumentsParams,
+  UpdateKnowledgeDocumentBody,
 } from './models/knowledge-document.model';
 
 @Injectable({ providedIn: 'root' })
@@ -59,6 +62,34 @@ export class ApiService {
   getKnowledgeDocument(id: string): Observable<KnowledgeDocumentDetail> {
     this.logger.debug('Fetching knowledge document', 'ApiService', { id });
     return this.http.get<KnowledgeDocumentDetail>(`${this.baseUrl}/api/knowledge/${id}`);
+  }
+
+  createKnowledgeDocument(body: CreateKnowledgeDocumentBody): Observable<KnowledgeDocumentDetail> {
+    this.logger.info('Creating knowledge document', 'ApiService', {
+      clinicId: body.clinicId,
+      category: body.category,
+      titleLength: body.title.length,
+      contentLength: body.content.length,
+    });
+    return this.http.post<KnowledgeDocumentDetail>(`${this.baseUrl}/api/knowledge`, body);
+  }
+
+  updateKnowledgeDocument(
+    id: string,
+    body: UpdateKnowledgeDocumentBody,
+  ): Observable<KnowledgeDocumentDetail> {
+    this.logger.info('Updating knowledge document', 'ApiService', {
+      id,
+      category: body.category,
+      titleLength: body.title?.length,
+      contentLength: body.content?.length,
+    });
+    return this.http.patch<KnowledgeDocumentDetail>(`${this.baseUrl}/api/knowledge/${id}`, body);
+  }
+
+  deleteKnowledgeDocument(id: string): Observable<DeleteKnowledgeDocumentResult> {
+    this.logger.info('Deleting knowledge document', 'ApiService', { id });
+    return this.http.delete<DeleteKnowledgeDocumentResult>(`${this.baseUrl}/api/knowledge/${id}`);
   }
 
   listConversations(

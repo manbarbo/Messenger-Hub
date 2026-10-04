@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ApiService } from '../../core/api.service';
 import { isAppApiError } from '../../core/app-api.error';
 import { LoggerService } from '../../core/logger.service';
@@ -14,8 +15,13 @@ import type {
   KnowledgeDocumentDetail,
   KnowledgeDocumentSummary,
 } from '../../core/models/knowledge-document.model';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 import { ErrorMessageComponent } from '../../shared/error-message/error-message.component';
 import { PaginationComponent } from '../../shared/pagination/pagination.component';
+import {
+  KnowledgeFormComponent,
+  type KnowledgeFormSubmit,
+} from '../knowledge-form/knowledge-form.component';
 
 const PAGE_SIZE = 20;
 
@@ -27,7 +33,10 @@ const PAGE_SIZE = 20;
     MatButtonModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatSnackBarModule,
+    ConfirmDialogComponent,
     ErrorMessageComponent,
+    KnowledgeFormComponent,
     PaginationComponent,
   ],
   templateUrl: './knowledge-list.component.html',
@@ -38,6 +47,7 @@ export class KnowledgeListComponent {
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly logger = inject(LoggerService);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly pageSize = PAGE_SIZE;
   readonly clinicFilter = signal('');
@@ -58,6 +68,16 @@ export class KnowledgeListComponent {
   readonly detailLoading = signal(false);
   readonly detailError = signal<string | null>(null);
   readonly selectedDocument = signal<KnowledgeDocumentDetail | null>(null);
+
+  readonly formOpen = signal(false);
+  readonly formMode = signal<'create' | 'edit'>('create');
+  readonly editingDocument = signal<KnowledgeDocumentDetail | null>(null);
+  readonly formSaving = signal(false);
+  readonly formError = signal<string | null>(null);
+
+  readonly deleteTarget = signal<KnowledgeDocumentSummary | null>(null);
+  readonly deleteBusy = signal(false);
+  readonly deleteError = signal<string | null>(null);
 
   readonly categoryOptions = computed(() => {
     const categories = new Set<string>();
@@ -143,6 +163,152 @@ export class KnowledgeListComponent {
     this.logger.debug('Closing knowledge document detail', 'KnowledgeList');
     this.selectedDocument.set(null);
     this.detailError.set(null);
+  }
+
+  openCreateForm(): void {
+    this.logger.info('Opening knowledge document create form', 'KnowledgeList');
+    this.closeDetail();
+    this.formMode.set('create');
+    this.editingDocument.set(null);
+    this.formError.set(null);
+    this.formOpen.set(true);
+  }
+
+  openEditForm(document: KnowledgeDocumentSummary): void {
+    this.logger.info('Opening knowledge document edit form', 'KnowledgeList', {
+      documentId: document.id,
+    });
+    this.closeDetail();
+    this.formMode.set('edit');
+    this.formError.set(null);
+    this.formSaving.set(true);
+    this.formOpen.set(true);
+    this.editingDocument.set(null);
+
+    this.api
+      .getKnowledgeDocument(document.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (detail) => {
+          this.editingDocument.set(detail);
+          this.formSaving.set(false);
+        },
+        error: (err: unknown) => {
+          this.formSaving.set(false);
+          this.formOpen.set(false);
+          this.formError.set(
+            isAppApiError(err) ? err.message : 'Failed to load knowledge document',
+          );
+          this.snackBar.open(this.formError() ?? 'Failed to load document', undefined, {
+            duration: 4000,
+          });
+          this.logger.error('Failed to load document for edit', 'KnowledgeList', {
+            documentId: document.id,
+            message: err instanceof Error ? err.message : String(err),
+          });
+        },
+      });
+  }
+
+  closeForm(): void {
+    this.logger.debug('Closing knowledge document form', 'KnowledgeList');
+    this.formOpen.set(false);
+    this.formMode.set('create');
+    this.editingDocument.set(null);
+    this.formError.set(null);
+  }
+
+  onFormSubmit(payload: KnowledgeFormSubmit): void {
+    this.formSaving.set(true);
+    this.formError.set(null);
+
+    const request$ =
+      payload.mode === 'create'
+        ? this.api.createKnowledgeDocument({
+            clinicId: payload.clinicId,
+            title: payload.title,
+            content: payload.content,
+            category: payload.category,
+          })
+        : this.api.updateKnowledgeDocument(payload.id, {
+            title: payload.title,
+            content: payload.content,
+            category: payload.category,
+          });
+
+    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.formSaving.set(false);
+        this.formOpen.set(false);
+        this.editingDocument.set(null);
+        const message =
+          payload.mode === 'create' ? 'Document created' : 'Document updated';
+        this.snackBar.open(message, undefined, { duration: 3000 });
+        this.logger.info('Knowledge document saved', 'KnowledgeList', {
+          mode: payload.mode,
+          ...(payload.mode === 'edit' ? { documentId: payload.id } : { clinicId: payload.clinicId }),
+        });
+        this.loadDocuments();
+      },
+      error: (err: unknown) => {
+        this.formSaving.set(false);
+        this.formError.set(isAppApiError(err) ? err.message : 'Failed to save knowledge document');
+        this.logger.error('Failed to save knowledge document', 'KnowledgeList', {
+          mode: payload.mode,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      },
+    });
+  }
+
+  requestDelete(document: KnowledgeDocumentSummary): void {
+    this.logger.info('Requesting knowledge document delete', 'KnowledgeList', {
+      documentId: document.id,
+    });
+    this.deleteError.set(null);
+    this.deleteTarget.set(document);
+  }
+
+  cancelDelete(): void {
+    this.logger.debug('Delete cancelled', 'KnowledgeList');
+    this.deleteTarget.set(null);
+    this.deleteError.set(null);
+  }
+
+  confirmDelete(): void {
+    const target = this.deleteTarget();
+    if (!target || this.deleteBusy()) {
+      return;
+    }
+
+    this.deleteBusy.set(true);
+    this.deleteError.set(null);
+
+    this.api
+      .deleteKnowledgeDocument(target.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.deleteBusy.set(false);
+          this.deleteTarget.set(null);
+          this.selectedDocument.set(null);
+          this.snackBar.open('Document deleted', undefined, { duration: 3000 });
+          this.logger.info('Knowledge document deleted', 'KnowledgeList', {
+            documentId: target.id,
+          });
+          this.loadDocuments();
+        },
+        error: (err: unknown) => {
+          this.deleteBusy.set(false);
+          this.deleteError.set(
+            isAppApiError(err) ? err.message : 'Failed to delete knowledge document',
+          );
+          this.logger.error('Failed to delete knowledge document', 'KnowledgeList', {
+            documentId: target.id,
+            message: err instanceof Error ? err.message : String(err),
+          });
+        },
+      });
   }
 
   clinicName(clinicId: string): string {

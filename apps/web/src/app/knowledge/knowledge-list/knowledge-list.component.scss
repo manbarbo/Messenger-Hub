@@ -12,6 +12,11 @@
   gap: 1rem;
 }
 
+.knowledge-base__header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .knowledge-base__header h1 {
   margin: 0;
   font-size: 1.5rem;
@@ -74,6 +79,32 @@
 
 .knowledge-table__row:last-child td {
   border-bottom: none;
+}
+
+.knowledge-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.knowledge-detail__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.knowledge-delete-error {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  z-index: 1250;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 .knowledge-skeleton {

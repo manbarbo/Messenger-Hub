@@ -176,6 +176,69 @@ describe('ApiService', () => {
     });
   });
 
+  describe('createKnowledgeDocument', () => {
+    it('posts a new knowledge document', () => {
+      const body = {
+        clinicId: 'clinic-1',
+        title: 'Horarios',
+        content: 'Lunes a viernes',
+        category: 'horarios',
+      };
+      const detail = {
+        id: 'doc-1',
+        ...body,
+        createdAt: '2026-10-01T10:00:00.000Z',
+        updatedAt: '2026-10-01T10:00:00.000Z',
+      };
+      let response: unknown;
+      service.createKnowledgeDocument(body).subscribe((result) => (response = result));
+
+      const request = httpMock.expectOne(`${environment.apiUrl}/api/knowledge`);
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual(body);
+
+      request.flush(detail);
+      expect(response).toEqual(detail);
+    });
+  });
+
+  describe('updateKnowledgeDocument', () => {
+    it('patches a knowledge document', () => {
+      const body = { title: 'Horarios actualizados' };
+      const detail = {
+        id: 'doc-1',
+        clinicId: 'clinic-1',
+        title: 'Horarios actualizados',
+        content: 'Lunes a viernes',
+        category: 'horarios',
+        createdAt: '2026-10-01T10:00:00.000Z',
+        updatedAt: '2026-10-02T10:00:00.000Z',
+      };
+      let response: unknown;
+      service.updateKnowledgeDocument('doc-1', body).subscribe((result) => (response = result));
+
+      const request = httpMock.expectOne(`${environment.apiUrl}/api/knowledge/doc-1`);
+      expect(request.request.method).toBe('PATCH');
+      expect(request.request.body).toEqual(body);
+
+      request.flush(detail);
+      expect(response).toEqual(detail);
+    });
+  });
+
+  describe('deleteKnowledgeDocument', () => {
+    it('deletes a knowledge document and returns confirmation', () => {
+      let response: unknown;
+      service.deleteKnowledgeDocument('doc-1').subscribe((result) => (response = result));
+
+      const request = httpMock.expectOne(`${environment.apiUrl}/api/knowledge/doc-1`);
+      expect(request.request.method).toBe('DELETE');
+
+      request.flush({ deleted: true, documentId: 'doc-1' });
+      expect(response).toEqual({ deleted: true, documentId: 'doc-1' });
+    });
+  });
+
   describe('sendSimulatorMessage', () => {
     it('posts simulator message and returns accepted payload', () => {
       const body = { from: '+573009998877', text: 'Hola' };
