@@ -80,7 +80,7 @@ Enable operators to **consult, create, update, and delete** RAG `knowledge_docum
 
 | Task | Layer | Scope |
 |------|-------|--------|
-| T-10.1 Backend Knowledge Repository CRUD | Backend | Extend `KnowledgeRepository` + Prisma adapter (`findById`, `findMany` paginated, `update`, `delete`); `KnowledgeDocumentNotFoundError`; embedding via raw SQL on update |
+| T-10.1 Backend Knowledge Repository CRUD | Backend | **Completed (2026-10-03):** `KnowledgeRepository` + Prisma adapter (`findById`, `findMany` paginated, `update`, `delete`); `KnowledgeDocumentNotFoundError`; embedding raw SQL on update; 429 API tests pass |
 | T-10.2 Backend Knowledge CQRS | Backend | Create/Update/Delete commands + List/Get queries; handlers use `EMBEDDING_SERVICE` (re-embed when title/content change); structured logging |
 | T-10.3 Backend Knowledge REST API | Backend | `KnowledgeDocumentsController` — `GET/POST /api/knowledge`, `GET/PATCH/DELETE /api/knowledge/:id`; Zod validation; DESIGN.md + README |
 | T-10.4 Frontend Knowledge List | Frontend | `/knowledge` route + nav; clinic/category filters; table + pagination + detail consult; `ApiService.listKnowledgeDocuments` |
@@ -214,7 +214,7 @@ Phase 10: RAG Knowledge Base Management
 | T-9.4 | Clinic Dropdowns | Backend List Clinics (`GET /api/clinics`) | Backend | Completed | 1–2 |
 | T-9.5 | Clinic Dropdowns | Frontend Clinic Dropdowns (Simulator + Conversation List) | Frontend | Completed | 2 |
 | T-9.6 | Chat Simulator | Chat-like Patient Simulator | Frontend | Completed | 2–3 |
-| T-10.1 | Knowledge Base | Backend Knowledge Repository CRUD | Backend | Backlog | 2–3 |
+| T-10.1 | Knowledge Base | Backend Knowledge Repository CRUD | Backend | Completed | 2–3 |
 | T-10.2 | Knowledge Base | Backend Knowledge CQRS Commands & Queries | Backend | Backlog | 3–4 |
 | T-10.3 | Knowledge Base | Backend Knowledge REST API | Backend | Backlog | 2–3 |
 | T-10.4 | Knowledge Base | Frontend Knowledge Base List | Frontend | Backlog | 2–3 |

@@ -4,6 +4,7 @@ export { SlotNotFoundError } from './slot-not-found.error';
 export { AppointmentNotFoundError } from './appointment-not-found.error';
 export { ConversationNotFoundError } from './conversation-not-found.error';
 export { ClinicNotFoundError } from './clinic-not-found.error';
+export { KnowledgeDocumentNotFoundError } from './knowledge-document-not-found.error';
 export { PastDateError } from './past-date.error';
 export { LLMProviderError } from './llm-provider.error';
 export { LLMIterationLimitError } from './llm-iteration-limit.error';

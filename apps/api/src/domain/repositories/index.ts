@@ -5,7 +5,11 @@ export {
 export { CLINIC_REPOSITORY, type ClinicRepository } from './clinic.repository';
 export { DOCTOR_REPOSITORY, type DoctorRepository } from './doctor.repository';
 export { SLOT_REPOSITORY, type SlotRepository } from './slot.repository';
-export { KNOWLEDGE_REPOSITORY, type KnowledgeRepository } from './knowledge.repository';
+export {
+  KNOWLEDGE_REPOSITORY,
+  type KnowledgeDocumentFilters,
+  type KnowledgeRepository,
+} from './knowledge.repository';
 export {
   CONVERSATION_REPOSITORY,
   type ConversationRepository,

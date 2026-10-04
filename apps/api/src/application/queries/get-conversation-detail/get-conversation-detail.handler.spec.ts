@@ -69,7 +69,11 @@ describe('GetConversationDetailHandler', () => {
   let conversationRepository: { findById: ReturnType<typeof vi.fn> };
   let messageRepository: { findByConversationId: ReturnType<typeof vi.fn> };
   let aiTraceRepository: { findByConversationId: ReturnType<typeof vi.fn> };
-  let clinicRepository: { findById: ReturnType<typeof vi.fn>; findByName: ReturnType<typeof vi.fn> };
+  let clinicRepository: {
+    findById: ReturnType<typeof vi.fn>;
+    findByName: ReturnType<typeof vi.fn>;
+    findAll: ReturnType<typeof vi.fn>;
+  };
   let logger: { debug: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   let handler: GetConversationDetailHandler;
 
@@ -77,13 +81,13 @@ describe('GetConversationDetailHandler', () => {
     conversationRepository = { findById: vi.fn() };
     messageRepository = { findByConversationId: vi.fn() };
     aiTraceRepository = { findByConversationId: vi.fn() };
-    clinicRepository = { findById: vi.fn(), findByName: vi.fn() };
+    clinicRepository = { findById: vi.fn(), findByName: vi.fn(), findAll: vi.fn() };
     logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     handler = new GetConversationDetailHandler(
       conversationRepository as unknown as ConversationRepository,
       messageRepository as unknown as MessageRepository,
       aiTraceRepository as unknown as AITraceRepository,
-      clinicRepository as ClinicRepository,
+      clinicRepository as unknown as ClinicRepository,
       logger as never,
     );
   });

@@ -18,7 +18,7 @@ export class ListClinicsHandler
     @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
-  async execute(): Promise<readonly ClinicListItem[]> {
+  async execute(_query: ListClinicsQuery): Promise<readonly ClinicListItem[]> {
     this.logger.debug('Listing clinics', {
       context: 'ListClinicsQueryHandler',
     });

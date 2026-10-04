@@ -3,6 +3,7 @@ import {
   AppointmentNotFoundError,
   ClinicNotFoundError,
   ConversationNotFoundError,
+  KnowledgeDocumentNotFoundError,
   LLMIterationLimitError,
   LLMProviderError,
   PastDateError,
@@ -49,6 +50,13 @@ describe('domain errors', () => {
     expect(err.clinicId).toBe('clinic-2');
   });
 
+  it('KnowledgeDocumentNotFoundError includes document id', () => {
+    const err = new KnowledgeDocumentNotFoundError('doc-9');
+    expect(err.name).toBe('KnowledgeDocumentNotFoundError');
+    expect(err.documentId).toBe('doc-9');
+    expect(err.message).toContain('doc-9');
+  });
+
   it('PastDateError includes date', () => {
     const date = new Date('2020-01-01T00:00:00Z');
     const err = new PastDateError(date);
@@ -74,6 +82,7 @@ describe('domain errors', () => {
     expect(new AppointmentNotFoundError().message).toContain('(unknown)');
     expect(new ConversationNotFoundError().message).toContain('(unknown)');
     expect(new ClinicNotFoundError().message).toContain('(unknown)');
+    expect(new KnowledgeDocumentNotFoundError().message).toContain('(unknown)');
   });
 
   it('NotFoundError variants accept a custom message', () => {
@@ -89,5 +98,8 @@ describe('domain errors', () => {
     expect(new ClinicNotFoundError('clinic-1', 'custom clinic message').message).toBe(
       'custom clinic message',
     );
+    expect(
+      new KnowledgeDocumentNotFoundError('doc-1', 'custom knowledge message').message,
+    ).toBe('custom knowledge message');
   });
 });
