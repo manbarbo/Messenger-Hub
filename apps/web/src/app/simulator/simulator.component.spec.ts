@@ -7,6 +7,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ApiService } from '../core/api.service';
 import { AppApiError } from '../core/app-api.error';
+import type { Clinic } from '../core/models/clinic.model';
 import type { SimulatorResponse } from '../core/models/api.model';
 import { SimulatorComponent } from './simulator.component';
 
@@ -17,6 +18,11 @@ describe('SimulatorComponent', () => {
     conversationId: 'conv-1',
   };
 
+  const clinics: Clinic[] = [
+    { id: 'clinic-1', name: 'Clínica Norte' },
+    { id: 'clinic-2', name: 'Clínica Sur' },
+  ];
+
   interface SnackbarCall {
     readonly message: string;
     readonly action?: string;
@@ -24,19 +30,24 @@ describe('SimulatorComponent', () => {
   }
 
   let sendSimulatorMessage: ReturnType<typeof vi.fn>;
+  let listClinics: ReturnType<typeof vi.fn>;
   let snackbarCalls: SnackbarCall[];
   let navigateSpy: ReturnType<typeof vi.spyOn>;
   let fixture: ComponentFixture<SimulatorComponent>;
   let component: SimulatorComponent;
 
-  async function setup(options?: { send?: ReturnType<typeof vi.fn> }) {
+  async function setup(options?: {
+    send?: ReturnType<typeof vi.fn>;
+    clinics?: ReturnType<typeof vi.fn>;
+  }) {
     sendSimulatorMessage = options?.send ?? vi.fn().mockReturnValue(of(successResponse));
+    listClinics = options?.clinics ?? vi.fn().mockReturnValue(of(clinics));
     snackbarCalls = [];
 
     await TestBed.configureTestingModule({
       imports: [SimulatorComponent],
       providers: [
-        { provide: ApiService, useValue: { sendSimulatorMessage } },
+        { provide: ApiService, useValue: { sendSimulatorMessage, listClinics } },
         provideRouter([{ path: 'conversations/:id', component: class {} }]),
         provideNoopAnimations(),
       ],
@@ -78,9 +89,24 @@ describe('SimulatorComponent', () => {
     fixture.detectChanges();
   }
 
+  function selectClinic(clinicId: string): void {
+    component.onClinicChange(clinicId);
+    fixture.detectChanges();
+  }
+
   it('should create', async () => {
     await setup();
     expect(component).toBeTruthy();
+  });
+
+  it('loads clinics on init and exposes them for the dropdown', async () => {
+    await setup();
+
+    expect(listClinics).toHaveBeenCalledTimes(1);
+    expect(component.clinics()).toEqual(clinics);
+    expect(component.clinicsLoading()).toBe(false);
+    expect(component.clinicsError()).toBeNull();
+    expect(html().querySelector('[data-testid="simulator-clinic"]')).toBeTruthy();
   });
 
   it('renders phone, message, and send controls', async () => {
@@ -106,7 +132,7 @@ describe('SimulatorComponent', () => {
     );
   });
 
-  it('sends the message and shows success state with toast', async () => {
+  it('sends the message without clinicId when default clinic is selected', async () => {
     await setup();
 
     setInput('simulator-phone', '+573001112233');
@@ -129,6 +155,50 @@ describe('SimulatorComponent', () => {
         config: expect.objectContaining({ duration: 4000 }),
       },
     ]);
+  });
+
+  it('sends the selected clinicId when a clinic is chosen', async () => {
+    await setup();
+
+    selectClinic('clinic-2');
+    setInput('simulator-phone', '+573001112233');
+    setInput('simulator-message', 'Hola');
+    submitForm();
+
+    expect(sendSimulatorMessage).toHaveBeenCalledWith({
+      from: '+573001112233',
+      text: 'Hola',
+      clinicId: 'clinic-2',
+    });
+  });
+
+  it('shows clinic load error state and still allows sending with default clinic', async () => {
+    await setup({
+      clinics: vi.fn().mockReturnValue(
+        throwError(
+          () =>
+            new AppApiError({
+              error: 'InternalServerError',
+              message: 'Internal server error',
+              status: 500,
+            }),
+        ),
+      ),
+    });
+
+    expect(component.clinicsError()).toBe('Internal server error');
+    expect(html().querySelector('[data-testid="simulator-clinics-error"]')?.textContent).toContain(
+      'Internal server error',
+    );
+
+    setInput('simulator-phone', '+573001112233');
+    setInput('simulator-message', 'Hola');
+    submitForm();
+
+    expect(sendSimulatorMessage).toHaveBeenCalledWith({
+      from: '+573001112233',
+      text: 'Hola',
+    });
   });
 
   it('trims phone and text before sending', async () => {

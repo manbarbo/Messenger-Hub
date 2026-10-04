@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import { ApiService } from '../../core/api.service';
 import { AppApiError } from '../../core/app-api.error';
 import type { PaginationMeta } from '../../core/models/api.model';
+import type { Clinic } from '../../core/models/clinic.model';
 import type { ConversationSummary } from '../../core/models/conversation.model';
 import { ConversationListComponent } from './conversation-list.component';
 
@@ -34,6 +35,11 @@ describe('ConversationListComponent', () => {
     },
   ];
 
+  const clinics: Clinic[] = [
+    { id: 'clinic-1', name: 'Clínica Norte' },
+    { id: 'clinic-2', name: 'Clínica Sur' },
+  ];
+
   const pagination: PaginationMeta = {
     page: 1,
     limit: 20,
@@ -44,18 +50,20 @@ describe('ConversationListComponent', () => {
   const listResponse = { data: conversations, pagination };
 
   let listConversations: ReturnType<typeof vi.fn>;
+  let listClinics: ReturnType<typeof vi.fn>;
   let navigate: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<ConversationListComponent>;
   let component: ConversationListComponent;
 
   beforeEach(async () => {
     listConversations = vi.fn().mockReturnValue(of(listResponse));
+    listClinics = vi.fn().mockReturnValue(of(clinics));
     navigate = vi.fn().mockResolvedValue(true);
 
     await TestBed.configureTestingModule({
       imports: [ConversationListComponent],
       providers: [
-        { provide: ApiService, useValue: { listConversations } },
+        { provide: ApiService, useValue: { listConversations, listClinics } },
         { provide: Router, useValue: { navigate } },
         provideRouter([]),
         provideNoopAnimations(),
@@ -79,6 +87,13 @@ describe('ConversationListComponent', () => {
     });
     expect(component.conversations()).toEqual(conversations);
     expect(component.loading()).toBe(false);
+  });
+
+  it('loads clinics on init for the clinic filter', () => {
+    expect(listClinics).toHaveBeenCalledTimes(1);
+    expect(component.clinics()).toEqual(clinics);
+    expect(component.clinicsError()).toBeNull();
+    expect(html().querySelector('[data-testid="clinic-filter"]')).toBeTruthy();
   });
 
   it('renders conversation rows with phone, clinic, status badge, messages, and activity', () => {
@@ -158,6 +173,58 @@ describe('ConversationListComponent', () => {
     });
     expect(component.statusFilter()).toBe('escalated');
     expect(component.page()).toBe(1);
+  });
+
+  it('refetches with clinic filter and resets to page 1', () => {
+    listConversations.mockClear();
+
+    component.onClinicFilterChange('clinic-2');
+    fixture.detectChanges();
+
+    expect(listConversations).toHaveBeenCalledWith({
+      clinicId: 'clinic-2',
+      page: 1,
+      limit: 20,
+    });
+    expect(component.clinicFilter()).toBe('clinic-2');
+    expect(component.page()).toBe(1);
+  });
+
+  it('includes both status and clinic filters when both are set', () => {
+    listConversations.mockClear();
+
+    component.onClinicFilterChange('clinic-1');
+    component.onStatusFilterChange('escalated');
+    fixture.detectChanges();
+
+    expect(listConversations).toHaveBeenLastCalledWith({
+      status: 'escalated',
+      clinicId: 'clinic-1',
+      page: 1,
+      limit: 20,
+    });
+  });
+
+  it('shows clinic filter load error without blocking conversation loading', () => {
+    listClinics.mockReturnValue(
+      throwError(
+        () =>
+          new AppApiError({
+            error: 'InternalServerError',
+            message: 'Internal server error',
+            status: 500,
+          }),
+      ),
+    );
+
+    component.loadClinics();
+    fixture.detectChanges();
+
+    expect(component.clinicsError()).toBe('Internal server error');
+    expect(html().querySelector('[data-testid="conversation-clinics-error"]')?.textContent).toContain(
+      'Internal server error',
+    );
+    expect(component.conversations()).toEqual(conversations);
   });
 
   it('refetches when page changes', () => {

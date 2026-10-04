@@ -10,6 +10,7 @@ import { ApiService } from '../../core/api.service';
 import { isAppApiError } from '../../core/app-api.error';
 import { LoggerService } from '../../core/logger.service';
 import type { PaginationMeta } from '../../core/models/api.model';
+import type { Clinic } from '../../core/models/clinic.model';
 import {
   CONVERSATION_STATUS_LABELS,
   CONVERSATION_STATUSES,
@@ -46,6 +47,10 @@ export class ConversationListComponent {
 
   readonly pageSize = PAGE_SIZE;
   readonly statusFilter = signal<ConversationStatus | ''>('');
+  readonly clinicFilter = signal('');
+  readonly clinics = signal<readonly Clinic[]>([]);
+  readonly clinicsLoading = signal(false);
+  readonly clinicsError = signal<string | null>(null);
   readonly page = signal(1);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -65,12 +70,22 @@ export class ConversationListComponent {
   readonly skeletonRows = [0, 1, 2, 3, 4];
 
   constructor() {
+    this.loadClinics();
     this.loadConversations();
   }
 
   onStatusFilterChange(status: ConversationStatus | ''): void {
     this.logger.info('Status filter changed', 'ConversationList', { status });
     this.statusFilter.set(status);
+    this.page.set(1);
+    this.loadConversations();
+  }
+
+  onClinicFilterChange(clinicId: string): void {
+    this.logger.info('Clinic filter changed', 'ConversationList', {
+      hasClinicId: clinicId.length > 0,
+    });
+    this.clinicFilter.set(clinicId);
     this.page.set(1);
     this.loadConversations();
   }
@@ -85,15 +100,43 @@ export class ConversationListComponent {
     void this.router.navigate(['/conversations', conversation.id]);
   }
 
+  loadClinics(): void {
+    this.clinicsLoading.set(true);
+    this.clinicsError.set(null);
+
+    this.api
+      .listClinics()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (clinics) => {
+          this.clinics.set(clinics);
+          this.clinicsLoading.set(false);
+          this.logger.debug('Clinics loaded', 'ConversationList', { count: clinics.length });
+        },
+        error: (err: unknown) => {
+          this.clinics.set([]);
+          this.clinicsLoading.set(false);
+          this.clinicsError.set(
+            isAppApiError(err) ? err.message : 'Failed to load clinics',
+          );
+          this.logger.error('Failed to load clinics', 'ConversationList', {
+            message: err instanceof Error ? err.message : String(err),
+          });
+        },
+      });
+  }
+
   loadConversations(): void {
     this.loading.set(true);
     this.error.set(null);
 
     const status = this.statusFilter();
+    const clinicId = this.clinicFilter();
 
     this.api
       .listConversations({
         ...(status ? { status } : {}),
+        ...(clinicId ? { clinicId } : {}),
         page: this.page(),
         limit: this.pageSize,
       })

@@ -240,16 +240,13 @@ Unit tests use mock repositories, mock LLM services, and mock event publishers â
 
 ## API Endpoints
 
-> **Status:** Planned for Phase 5 (controllers/routes are not exposed yet). The contracts below are the target API described in [DESIGN.md](./DESIGN.md#5-api-contracts).
-
 | Method | Path                     | Description                                     |
 | ------ | ------------------------ | ----------------------------------------------- |
 | `POST` | `/webhooks/messages`     | Receives incoming messages (simulates WhatsApp) |
+| `GET`  | `/api/clinics`           | Lists clinic id + name for dashboard dropdowns  |
 | `GET`  | `/api/conversations`     | Lists conversations for the dashboard           |
 | `GET`  | `/api/conversations/:id` | Gets conversation details and AI traces         |
 | `POST` | `/api/simulator`         | Sends a test message as if from a patient       |
-
-Currently the API only exposes NestJS bootstrap health routes (`GET /`, `GET /health`) until Phase 5 lands.
 
 ## License
 

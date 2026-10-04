@@ -26,17 +26,25 @@
     }
 
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Clinic ID (optional)</mat-label>
-      <input
-        matInput
+      <mat-label>Clinic</mat-label>
+      <mat-select
         data-testid="simulator-clinic"
         name="clinicId"
-        placeholder="Uses DEFAULT_CLINIC_ID when empty"
         [value]="clinicId()"
-        [disabled]="loading()"
-        (input)="onClinicIdInput($event)"
-      />
+        [disabled]="loading() || clinicsLoading()"
+        (selectionChange)="onClinicChange($event.value)"
+      >
+        <mat-option value="">Default clinic</mat-option>
+        @for (clinic of clinics(); track clinic.id) {
+          <mat-option [value]="clinic.id">{{ clinic.name }}</mat-option>
+        }
+      </mat-select>
     </mat-form-field>
+    @if (clinicsError(); as clinicsError) {
+      <p class="simulator__field-error" data-testid="simulator-clinics-error" role="alert">
+        {{ clinicsError }}
+      </p>
+    }
 
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Message</mat-label>

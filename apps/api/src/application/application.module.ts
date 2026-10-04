@@ -7,6 +7,7 @@ import { ProcessIncomingMessageHandler } from './commands/process-incoming-messa
 import { AppointmentCancelledEventHandler } from './event-handlers/appointment-cancelled.handler';
 import { AppointmentCreatedEventHandler } from './event-handlers/appointment-created.handler';
 import { GetConversationDetailHandler } from './queries/get-conversation-detail/get-conversation-detail.handler';
+import { ListClinicsHandler } from './queries/list-clinics/list-clinics.handler';
 import { ListConversationsHandler } from './queries/list-conversations/list-conversations.handler';
 
 export const COMMAND_HANDLERS = [
@@ -15,7 +16,11 @@ export const COMMAND_HANDLERS = [
   ProcessIncomingMessageHandler,
 ];
 
-export const QUERY_HANDLERS = [ListConversationsHandler, GetConversationDetailHandler];
+export const QUERY_HANDLERS = [
+  ListConversationsHandler,
+  GetConversationDetailHandler,
+  ListClinicsHandler,
+];
 
 export const EVENT_HANDLERS = [AppointmentCreatedEventHandler, AppointmentCancelledEventHandler];
 

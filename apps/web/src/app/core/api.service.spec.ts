@@ -40,6 +40,23 @@ describe('ApiService', () => {
     expect(service).toBeTruthy();
   });
 
+  describe('listClinics', () => {
+    it('requests the clinics endpoint and returns id/name list', () => {
+      const clinics = [
+        { id: 'clinic-1', name: 'Clínica Norte' },
+        { id: 'clinic-2', name: 'Clínica Sur' },
+      ];
+      let response: unknown;
+      service.listClinics().subscribe((body) => (response = body));
+
+      const request = httpMock.expectOne(`${environment.apiUrl}/api/clinics`);
+      expect(request.request.method).toBe('GET');
+
+      request.flush(clinics);
+      expect(response).toEqual(clinics);
+    });
+  });
+
   describe('listConversations', () => {
     it('requests the conversations endpoint without params by default', () => {
       let response: unknown;

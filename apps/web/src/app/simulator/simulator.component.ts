@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { isAppApiError } from '../core/app-api.error';
 import { LoggerService } from '../core/logger.service';
+import type { Clinic } from '../core/models/clinic.model';
 import type { SimulatorResponse } from '../core/models/api.model';
 
 interface FormErrors {
@@ -25,6 +27,7 @@ const EMPTY_ERRORS: FormErrors = { phone: null, text: null };
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatSnackBarModule,
   ],
   templateUrl: './simulator.component.html',
@@ -41,10 +44,17 @@ export class SimulatorComponent {
   readonly phone = signal('');
   readonly message = signal('');
   readonly clinicId = signal('');
+  readonly clinics = signal<readonly Clinic[]>([]);
+  readonly clinicsLoading = signal(false);
+  readonly clinicsError = signal<string | null>(null);
   readonly loading = signal(false);
   readonly result = signal<SimulatorResponse | null>(null);
   readonly errorMessage = signal<string | null>(null);
   readonly errors = signal<FormErrors>(EMPTY_ERRORS);
+
+  constructor() {
+    this.loadClinics();
+  }
 
   onPhoneInput(event: Event): void {
     this.phone.set((event.target as HTMLInputElement).value);
@@ -54,8 +64,35 @@ export class SimulatorComponent {
     this.message.set((event.target as HTMLTextAreaElement).value);
   }
 
-  onClinicIdInput(event: Event): void {
-    this.clinicId.set((event.target as HTMLInputElement).value);
+  onClinicChange(clinicId: string): void {
+    this.clinicId.set(clinicId);
+    this.logger.debug('Clinic selected', 'Simulator', { hasClinicId: clinicId.length > 0 });
+  }
+
+  loadClinics(): void {
+    this.clinicsLoading.set(true);
+    this.clinicsError.set(null);
+
+    this.api
+      .listClinics()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (clinics) => {
+          this.clinics.set(clinics);
+          this.clinicsLoading.set(false);
+          this.logger.debug('Clinics loaded', 'Simulator', { count: clinics.length });
+        },
+        error: (err: unknown) => {
+          this.clinics.set([]);
+          this.clinicsLoading.set(false);
+          this.clinicsError.set(
+            isAppApiError(err) ? err.message : 'Failed to load clinics',
+          );
+          this.logger.error('Failed to load clinics', 'Simulator', {
+            message: err instanceof Error ? err.message : String(err),
+          });
+        },
+      });
   }
 
   send(): void {

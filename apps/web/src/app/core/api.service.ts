@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { LoggerService } from './logger.service';
 import type { ConversationDetail, ConversationSummary } from './models/conversation.model';
+import type { Clinic } from './models/clinic.model';
 import type {
   ListConversationsParams,
   ListConversationsResponse,
@@ -16,6 +17,11 @@ export class ApiService {
   private readonly http = inject(HttpClient);
   private readonly logger = inject(LoggerService);
   private readonly baseUrl = environment.apiUrl;
+
+  listClinics(): Observable<readonly Clinic[]> {
+    this.logger.debug('Listing clinics', 'ApiService');
+    return this.http.get<readonly Clinic[]>(`${this.baseUrl}/api/clinics`);
+  }
 
   listConversations(
     params: ListConversationsParams = {},

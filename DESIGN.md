@@ -596,7 +596,7 @@ Current Message:
 
 # 5. API Contracts
 
-> **Implementation status (2026-10-02):** `POST /webhooks/messages`, `GET /api/conversations`, `GET /api/conversations/:id`, and `POST /api/simulator` are implemented (`presentation/controllers/`). Global exception filter and class-validator `ValidationPipe` remain T-5.2. Note: list responses omit `messageCount` (not computed by `ListConversationsHandler` yet).
+> **Implementation status (2026-10-03):** `POST /webhooks/messages`, `GET /api/conversations`, `GET /api/conversations/:id`, `POST /api/simulator`, and `GET /api/clinics` are implemented (`presentation/controllers/`). Global exception filter and class-validator `ValidationPipe` remain T-5.2. Note: list responses omit `messageCount` (not computed by `ListConversationsHandler` yet).
 
 ## Base URL
 
@@ -638,6 +638,25 @@ Receives incoming messages (simulates WhatsApp). Responds fast; LLM processing h
 - Invalid bodies return `400` with `{ "error": "ValidationError", "message": "..." }`.
 - If `message_id` already exists, returns `200 OK` with `{ "status": "duplicate", "conversationId": "uuid" }` — no reprocessing.
 - Worker picks up the message, loads conversation history, calls LLM, and sends response.
+
+### GET /api/clinics
+
+Lists clinic options for dashboard dropdowns (Simulator, conversation filters).
+
+**Response (200):**
+
+```json
+[
+  { "id": "uuid", "name": "Clínica Norte" },
+  { "id": "uuid", "name": "Clínica Sur" }
+]
+```
+
+**Behavior:**
+
+- Returns all clinics ordered by `name` ascending.
+- Response items include only `id` and `name` (sufficient for select controls).
+- Empty array when no clinics exist.
 
 ### GET /api/conversations
 

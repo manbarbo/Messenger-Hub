@@ -17,12 +17,13 @@ describe('PrismaClinicRepository', () => {
     clinic: {
       findUnique: ReturnType<typeof vi.fn>;
       findFirst: ReturnType<typeof vi.fn>;
+      findMany: ReturnType<typeof vi.fn>;
     };
   };
   let repository: PrismaClinicRepository;
 
   beforeEach(() => {
-    prisma = { clinic: { findUnique: vi.fn(), findFirst: vi.fn() } };
+    prisma = { clinic: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() } };
     repository = new PrismaClinicRepository(prisma as never);
   });
 
@@ -56,5 +57,29 @@ describe('PrismaClinicRepository', () => {
     prisma.clinic.findFirst.mockResolvedValue(null);
 
     expect(await repository.findByName('Clínica Sur')).toBeNull();
+  });
+
+  it('returns all clinic ids and names ordered by name', async () => {
+    prisma.clinic.findMany.mockResolvedValue([
+      { id: 'clinic-1', name: 'Clínica Norte' },
+      { id: 'clinic-2', name: 'Clínica Sur' },
+    ]);
+
+    const result = await repository.findAll();
+
+    expect(prisma.clinic.findMany).toHaveBeenCalledWith({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    expect(result).toEqual([
+      { id: 'clinic-1', name: 'Clínica Norte' },
+      { id: 'clinic-2', name: 'Clínica Sur' },
+    ]);
+  });
+
+  it('returns empty array when no clinics exist', async () => {
+    prisma.clinic.findMany.mockResolvedValue([]);
+
+    expect(await repository.findAll()).toEqual([]);
   });
 });

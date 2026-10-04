@@ -31,6 +31,7 @@ import { AppointmentCreatedEventHandler } from './event-handlers/appointment-cre
 import { AIOrchestratorService } from './llm/ai-orchestrator.service';
 import { ToolValidator } from './llm/tool-validator';
 import { GetConversationDetailHandler } from './queries/get-conversation-detail/get-conversation-detail.handler';
+import { ListClinicsHandler } from './queries/list-clinics/list-clinics.handler';
 import { ListConversationsHandler } from './queries/list-conversations/list-conversations.handler';
 
 const noop = async () => undefined;
@@ -69,7 +70,10 @@ const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(
       useValue: { findByMessageId: noop, create: noop, findByConversationId: noop },
     },
     { provide: AI_TRACE_REPOSITORY, useValue: { findByConversationId: noop, create: noop } },
-    { provide: CLINIC_REPOSITORY, useValue: { findById: noop, findByName: noop } },
+    {
+      provide: CLINIC_REPOSITORY,
+      useValue: { findById: noop, findByName: noop, findAll: noop },
+    },
     { provide: DOCTOR_REPOSITORY, useValue: { existsByClinicAndSpecialty: noop } },
     { provide: EVENT_PUBLISHER, useValue: { publish: noop } },
     { provide: QUEUE_SERVICE, useValue: { push: noop } },
@@ -102,6 +106,7 @@ describe('ApplicationModule', () => {
     expect(QUERY_HANDLERS).toEqual([
       ListConversationsHandler,
       GetConversationDetailHandler,
+      ListClinicsHandler,
     ]);
     expect(EVENT_HANDLERS).toEqual([
       AppointmentCreatedEventHandler,
@@ -128,6 +133,7 @@ describe('ApplicationModule', () => {
     expect(moduleRef.get(GetConversationDetailHandler)).toBeInstanceOf(
       GetConversationDetailHandler,
     );
+    expect(moduleRef.get(ListClinicsHandler)).toBeInstanceOf(ListClinicsHandler);
     expect(moduleRef.get(ToolValidator)).toBeInstanceOf(ToolValidator);
     expect(moduleRef.get(AIOrchestratorService)).toBeInstanceOf(AIOrchestratorService);
   });

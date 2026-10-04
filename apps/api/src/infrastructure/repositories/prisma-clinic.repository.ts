@@ -40,4 +40,12 @@ export class PrismaClinicRepository implements ClinicRepository {
     });
     return row ? toDomain(row) : null;
   }
+
+  async findAll(): Promise<Pick<Clinic, 'id' | 'name'>[]> {
+    const rows = await this.prisma.clinic.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    return rows.map((row) => ({ id: row.id, name: row.name }));
+  }
 }

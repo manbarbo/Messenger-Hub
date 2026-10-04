@@ -2,24 +2,51 @@
   <header class="conversation-inbox__header">
     <h1 id="conversation-inbox-title">Conversations</h1>
 
-    <mat-form-field
-      appearance="outline"
-      subscriptSizing="dynamic"
-      class="conversation-inbox__filter"
-    >
-      <mat-label>Status</mat-label>
-      <mat-select
-        data-testid="status-filter"
-        [value]="statusFilter()"
-        (selectionChange)="onStatusFilterChange($event.value)"
+    <div class="conversation-inbox__filters">
+      <mat-form-field
+        appearance="outline"
+        subscriptSizing="dynamic"
+        class="conversation-inbox__filter"
       >
-        <mat-option value="">All statuses</mat-option>
-        @for (option of statusOptions; track option.value) {
-          <mat-option [value]="option.value">{{ option.label }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+        <mat-label>Clinic</mat-label>
+        <mat-select
+          data-testid="clinic-filter"
+          [value]="clinicFilter()"
+          [disabled]="clinicsLoading()"
+          (selectionChange)="onClinicFilterChange($event.value)"
+        >
+          <mat-option value="">All clinics</mat-option>
+          @for (clinic of clinics(); track clinic.id) {
+            <mat-option [value]="clinic.id">{{ clinic.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field
+        appearance="outline"
+        subscriptSizing="dynamic"
+        class="conversation-inbox__filter"
+      >
+        <mat-label>Status</mat-label>
+        <mat-select
+          data-testid="status-filter"
+          [value]="statusFilter()"
+          (selectionChange)="onStatusFilterChange($event.value)"
+        >
+          <mat-option value="">All statuses</mat-option>
+          @for (option of statusOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
   </header>
+
+  @if (clinicsError(); as clinicsError) {
+    <p class="conversation-inbox__filter-error" data-testid="conversation-clinics-error" role="alert">
+      {{ clinicsError }}
+    </p>
+  }
 
   @if (loading()) {
     <div
