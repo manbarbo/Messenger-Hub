@@ -139,21 +139,21 @@ MessengerHub/
 │   │       ├── domain/             # Entities, value objects, enums, repository interfaces, AI tool interfaces
 │   │       ├── application/        # Use cases, CQRS command/query handlers, DTOs, LLM orchestration
 │   │       ├── infrastructure/     # Postgres (pgvector) & Mongo adapters, LLM clients, queue adapters
-│   │       └── presentation/       # Placeholder — Express controllers (webhook, dashboard API) arrive in Phase 5
-│   └── web/                        # Angular frontend (Dashboard & Simulator)
+│   │       └── presentation/       # Controllers: webhook, conversations, simulator, clinics, knowledge (RAG CRUD)
+│   └── web/                        # Angular frontend (Dashboard, Simulator, Knowledge Base)
 │       └── src/
 │           ├── app/
-│           │   ├── conversations/  # Conversation inbox and detail views (Phase 6)
-│           │   ├── simulator/      # Patient message simulator (Phase 6)
-│           │   ├── shared/         # Reusable components, services, interceptors (Phase 6)
-│           │   └── core/           # Guards, models, API service (Phase 6)
+│           │   ├── conversations/  # Conversation inbox and detail views
+│           │   ├── simulator/      # Patient message simulator (chat mode)
+│           │   ├── knowledge/      # RAG knowledge base list + create/edit form
+│           │   ├── shared/         # Reusable components (layout, pagination, dialogs, error UI)
+│           │   └── core/           # Models, ApiService, LoggerService, interceptors
 │           ├── assets/
 │           └── environments/
-├── docs/                           # Placeholder — knowledge base seed documents (Phase 7)
 ├── plans/                          # Task plans
 │   ├── backlog/                    # Pending tasks
 │   ├── inProgress/                 # Active tasks
-│   ├── completed/                  # Finished tasks
+│   ├── completed/                  # Finished tasks (Phases 1–10)
 │   └── master_plan.md              # High-level implementation overview
 ├── AGENTS.md
 ├── DECISIONS.md
@@ -501,6 +501,7 @@ Rules:
 - If no document has similarity > 0.7, the tool returns "No relevant information found".
 - The LLM must not fabricate information not present in the knowledge base.
 - Document chunking strategy: split by section/paragraph, max 500 tokens per chunk.
+- **Admin CRUD (Phase 10):** the dashboard manages documents via `/api/knowledge` (CQRS + REST). Clients never send embedding vectors; handlers regenerate embeddings on create and when `title`/`content` change. Patient tool calling remains read-only search.
 
 ## Prompt Construction
 
@@ -630,6 +631,7 @@ Frontend responsibilities:
 - conversation inbox with status filtering
 - conversation detail with message timeline and AI traces
 - patient simulator (send test messages)
+- **knowledge base management** (list/create/edit/delete RAG documents per clinic)
 - loading states
 - error presentation
 

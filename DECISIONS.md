@@ -4,7 +4,7 @@
 
 This document captures the key architectural and technical decisions made during the design and implementation of MessengerHub, along with their context, rationale, and trade-offs.
 
-> **Implementation status (2026-10-03):** All phases 1–9 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration, async processing, API layer, frontend dashboard, seed data, testing & coverage, structured logging). Decisions below marked with *(implemented)* reflect choices already visible in code; others describe target design.
+> **Implementation status (2026-10-03):** All phases 1–10 are implemented (domain, dual-database persistence, CQRS, LLM/RAG/tool validation/orchestration, async processing, API layer, frontend dashboard, seed data, testing & coverage, structured logging, **RAG Knowledge Base CRUD**). Decisions below marked with *(implemented)* reflect choices already visible in code; others describe target design.
 
 ---
 
@@ -651,6 +651,8 @@ class MockLLMService implements LLMService {
 | `SlotAlreadyBookedError` | 409 | Slot was booked between check and booking attempt |
 | `SlotNotFoundError` | 404 | Slot does not exist |
 | `ClinicNotFoundError` | 404 | Clinic not found |
+| `ConversationNotFoundError` | 404 | Conversation not found |
+| `KnowledgeDocumentNotFoundError` | 404 | Knowledge document not found (RAG admin CRUD) |
 | `PastDateError` | 400 | Booking attempt for a past date |
 | `LLMProviderError` | 502 | LLM API failure |
 | `ValidationError` | 400 | Invalid request fields |
@@ -704,7 +706,7 @@ class MockLLMService implements LLMService {
 - **3+ specialties:** Medicina General, Dermatología, Cardiología, Pediatría
 - **6+ doctors:** Distributed across clinics and specialties
 - **2 weeks of slots:** 8 AM – 6 PM, 30-minute intervals, weekdays only
-- **8 knowledge documents:** Horarios, sedes, preparación de exámenes, políticas de cancelación, servicios, contacto — embedded with `gemini-embedding-001` (768 dims)
+- **12 knowledge documents:** Horarios, sedes, preparación de exámenes, políticas de cancelación, servicios, contacto — embedded with `gemini-embedding-001` (768 dims) — **implemented as 12**
 - **Sample conversations:** 2–3 conversations with AI traces for dashboard testing — implemented as 3 conversations covering all terminal statuses
 
 ---
@@ -921,3 +923,32 @@ CREATE INDEX "idx_knowledge_docs_embedding"
 - Verified pgvector availability on RDS PostgreSQL (it is supported as an extension).
 - Verified that SQS DLQ configuration matches the retry requirements.
 - Confirmed that Colombia does not observe DST, simplifying timezone handling.
+
+---
+
+# 30. RAG Knowledge Base Admin CRUD (Phase 10)
+
+**Status:** Accepted *(implemented — T-10.1 … T-10.5)*
+
+**Context:** Operators needed a way to consult, create, update, and delete clinic knowledge documents used by RAG without SQL access. Patient-facing tool calling (`buscar_conocimiento`) must remain read-only search; admin mutations are a separate management surface.
+
+**Decision:**
+
+- Expose knowledge document CRUD through CQRS commands/queries (`Create/Update/DeleteKnowledgeDocumentCommand`, `List/GetKnowledgeDocumentQuery`) and REST under `/api/knowledge`.
+- **Embeddings are never accepted from clients.** Handlers inject the domain `EMBEDDING_SERVICE` port and generate vectors from `title + content` (same model/dims as search: `gemini-embedding-001`, 768).
+- On **update**, re-embed only when `title` or `content` changes; category-only updates keep the stored vector.
+- Repository adapters persist vectors via raw SQL (`Unsupported("vector(768)")` / `$executeRaw`), same pattern as seed and original create.
+- List API uses `limit` (not `pageSize`) and `{ data, pagination }` to match conversations.
+- All documents remain scoped by `clinicId` (multi-tenant RAG). The Angular form locks clinic on edit.
+
+**Rationale:**
+
+- Keeps RAG correctness (index and query embeddings must match) inside the application layer.
+- Preserves SOLID/CQRS boundaries: controllers validate (Zod) and delegate; domain errors map through `DomainExceptionFilter`.
+- Avoids overengineering (no vector-editing UI, no separate admin service).
+
+**Trade-offs:**
+
+- Hard delete removes the document from retrieval immediately (no soft-delete/archival yet).
+- Category filter options are derived from the current list page (no dedicated categories endpoint).
+- No auth/authorization on admin endpoints in the MVP (dashboard assumed trusted/local).

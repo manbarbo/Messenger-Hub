@@ -15,7 +15,7 @@ The core challenge is reliability: the AI must not invent data, must validate al
 
 ## Features
 
-### Implemented (Phases 1–3)
+### Implemented (Phases 1–10)
 
 #### Domain & Persistence Core
 
@@ -24,7 +24,7 @@ The core challenge is reliability: the AI must not invent data, must validate al
 - CQRS command/query handlers with mock-friendly repository interfaces.
 - DB-level idempotency primitives (`messages.messageId` unique sparse index; `appointments.slotId` unique constraint).
 
-#### AI Engine & Tool Calling (backend core, not yet exposed via HTTP)
+#### AI Engine & Tool Calling
 
 Strictly controlled LLM execution using schema validation (Zod) for the following tools:
 
@@ -41,24 +41,27 @@ Implemented pipeline components:
 - Colombia timezone interpretation (`America/Bogota`, fixed UTC-5) in prompts and domain validation.
 - Unit tests across domain, CQRS handlers, repositories, LLM/RAG/orchestration (Vitest).
 
-### Planned (Phases 4–8 — backlog)
+#### Async Processing & API (Phases 4–5)
 
-#### Webhook & Event Reception
+- `POST /webhooks/messages` — fast accept + BullMQ enqueue; idempotent by `message_id`.
+- Separate worker process (`worker-main.ts`) consumes `message-processing` (+ DLQ) and runs the AI pipeline.
+- Dashboard APIs: conversations list/detail, clinics, patient simulator.
+- Global `DomainExceptionFilter` maps domain errors to HTTP status codes.
 
-- Fast HTTP response for incoming messages.
-- Idempotency control at the webhook boundary: duplicate `message_id`s safely ignored.
-- Background worker consuming from BullMQ (Redis) to decouple HTTP response from LLM latency.
+#### Frontend Dashboard (Phases 6, 9–10)
 
-#### Traceability & Monitoring (dashboard API + UI)
+- Conversation inbox with status/clinic filters, detail with messages + AI traces.
+- WhatsApp-like patient simulator (form → chat mode with polling).
+- **Knowledge Base management** at `/knowledge`: list, create, edit, delete RAG documents per clinic.
+- Structured frontend logging (`LoggerService`) + global error boundary.
 
-- Conversation inbox with state filtering.
-- Conversation detail with message timeline and AI traces (tokens, latency, cost, tool calls).
-- Patient simulator to send test messages.
+#### Seed Data & Quality
 
-#### Seed Data
-
-- Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, knowledge documents + embeddings) — **implemented (T-7.1)**.
-- MongoDB seed with sample conversations and AI traces — **implemented (T-7.2)**.
+- Full PostgreSQL seed (clinics, doctors, 2 weeks of availability, 12 knowledge documents + embeddings) — **T-7.1**.
+- MongoDB seed with sample conversations and AI traces — **T-7.2**.
+- Coverage gate ≥ 75% backend + frontend — **Phase 8**.
+- Structured logging backend (Winston) + frontend — **Phase 9**.
+- RAG admin CRUD (repository + CQRS + REST + UI) — **Phase 10**.
 
 > **Current async path:** `POST /webhooks/messages` validates and enqueues via `ProcessIncomingMessageCommand`; `QUEUE_SERVICE` is `BullMQQueueService` (`message-processing` + DLQ). The consumer runs in a **separate worker process** (`worker-main.ts` / `WorkerModule`). Default `pnpm dev` starts **API + Worker + Web** together. Set `DEFAULT_CLINIC_ID` in `apps/api/.env` (or send `clinic_id` in the webhook body).
 >
@@ -69,6 +72,8 @@ Implemented pipeline components:
 > **Troubleshooting — worker `EADDRINUSE :::3000`:** The worker process must **not** bind an HTTP port. This error means Nest CLI ran the **API** entry (`dist/main.js`) instead of `dist/worker-main.js`. Cause: `entryFile` must sit at the **root** of `apps/api/nest-cli.worker.json` (not under `compilerOptions` — Nest CLI ignores nested `entryFile` and defaults to `main`). Check that `entryFile: "worker-main"` is top-level and that `pnpm --filter api build:worker` emits `dist/worker-main.js`.
 >
 > **Troubleshooting — `UnknownDependenciesException` in the worker:** Nest DI failed to resolve a constructor dependency (often shown as `[Function: Object]`). For **concrete injectable classes** injected by type (no `@Inject` token), use a **value** import, not `import type` — type-only imports are erased and break `emitDecoratorMetadata`. Interfaces and `@Inject(Symbol)` deps may remain type-only. Example fix in `MessageProcessorService`: `import { AIOrchestratorService } from '...'` (not `import type`).
+>
+> **Knowledge Base (Phase 10):** manage RAG documents at `http://localhost:4200/knowledge` (or via API `/api/knowledge`). Create/edit regenerates embeddings server-side (`title` + `content`) so semantic search stays consistent after updates.
 
 ## Tech Stack
 
@@ -104,15 +109,15 @@ The backend implements Clean Architecture (Presentation → Application → Doma
 | 1 | Foundation (scaffolding, domain, databases) | Completed |
 | 2 | Backend core data (PG/Mongo repos, CQRS) | Completed |
 | 3 | AI pipeline (LLM, RAG, tool validation, orchestration) | Completed |
-| 4 | Async processing (queue, worker, webhook) | Completed |
+| 4 | Async processing (queue, worker, webhook, BullBoard) | Completed |
 | 5 | API layer (controllers, routes, error handling) | Completed |
 | 6 | Frontend (Angular dashboard + simulator) | Completed |
 | 7 | Seed data (PG knowledge base + Mongo samples) | Completed |
 | 8 | Testing & coverage gate (≥ 75%) | Completed |
-| 9 | Logging (backend Winston + frontend error tracking) | Completed |
-| 9.3 | Add Structured Logging Across Application | Completed |
+| 9 | Logging (backend Winston + frontend error tracking) + clinic dropdowns + chat simulator | Completed |
+| 10 | RAG Knowledge Base Management (CRUD API + UI) | Completed |
 
-See [plans/master_plan.md](./plans/master_plan.md) for the full task breakdown.
+See [plans/master_plan.md](./plans/master_plan.md) for the full task breakdown (completed plans live in `plans/completed/`).
 
 ## Project Structure
 
@@ -130,21 +135,21 @@ MessengerHub/
 │   │       ├── domain/          # Entities, VOs, enums, repository/service interfaces, errors, events
 │   │       ├── application/     # CQRS handlers, DTOs, AI orchestration (LLM + RAG + tools)
 │   │       ├── infrastructure/  # Postgres (pgvector) & Mongo adapters, LLM/embedding clients, BullMQ queue
-│   │       └── presentation/    # Placeholder — controllers arrive in Phase 5
-│   └── web/                     # Angular frontend (Dashboard & Simulator)
+│   │       └── presentation/    # Controllers: webhook, conversations, simulator, clinics, knowledge
+│   └── web/                     # Angular frontend (Dashboard, Simulator, Knowledge Base)
 │       └── src/
 │           ├── app/
-│           │   ├── conversations/  # Conversation inbox and detail views (Phase 6)
-│           │   ├── simulator/      # Patient message simulator (Phase 6)
-│           │   ├── shared/         # Reusable components, services, interceptors (Phase 6)
-│           │   └── core/           # Guards, models, API service (Phase 6)
+│           │   ├── conversations/  # Conversation inbox and detail views
+│           │   ├── simulator/      # Patient message simulator (chat mode)
+│           │   ├── knowledge/      # RAG knowledge base list + create/edit form (Phase 10)
+│           │   ├── shared/         # Reusable components (layout, pagination, dialogs, error UI)
+│           │   └── core/           # Models, ApiService, LoggerService, interceptors
 │           ├── assets/
 │           └── environments/
-├── docs/                        # Placeholder — knowledge base seed documents (Phase 7)
 ├── plans/                       # Task plans
 │   ├── backlog/                 # Pending tasks
 │   ├── inProgress/              # Active tasks
-│   ├── completed/               # Finished tasks
+│   ├── completed/               # Finished tasks (all Phase 1–10 plans)
 │   └── master_plan.md           # High-level implementation overview
 ├── AGENTS.md
 ├── DECISIONS.md
@@ -234,9 +239,11 @@ pnpm --filter api test:cov
 pnpm --filter web test:cov
 ```
 
-Backend unit tests currently cover domain entities, tool calling validation (Zod schemas, domain rules), CQRS handlers, repository contracts, LLM orchestration (iteration limits, error handling, escalation), and infrastructure adapters.
+Backend unit tests currently cover domain entities, tool calling validation (Zod schemas, domain rules), CQRS handlers, repository contracts, LLM orchestration (iteration limits, error handling, escalation), knowledge-document CRUD, and infrastructure adapters.
 
 Unit tests use mock repositories, mock LLM services, and mock event publishers — no real database, HTTP server, or LLM API required.
+
+**Current test counts (after Phase 10):** backend ~459 tests (70 files); frontend ~123 tests (17 files). Coverage thresholds ≥ 75% are enforced in Vitest and Angular test configs.
 
 ## API Endpoints
 
@@ -269,6 +276,7 @@ Private — for evaluation purposes only.
 | Zod validation for LLM outputs | LLM arguments are untrusted input; must be validated before execution |
 | pgvector over dedicated vector DB | Single database for knowledge + clinic data; Google `gemini-embedding-001` (768 dimensions) for embeddings |
 | Max 5 tool-call iterations | Prevents infinite loops; forces escalation if unresolved |
+| Knowledge admin CRUD behind CQRS | Dashboard manages RAG docs via commands/queries; embeddings regenerate on create and title/content update — never hand-edit vectors |
 
 Full decision record in [DECISIONS.md](./DECISIONS.md).
 

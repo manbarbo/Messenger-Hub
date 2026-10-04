@@ -2,9 +2,9 @@
 
 ## MessengerHub — Task Summary
 
-This document provides a high-level overview of all implementation tasks. Detailed task plans are in the `backlog/` folder, organized by phase and layer.
+This document provides a high-level overview of all implementation tasks. Detailed task plans live in `plans/completed/` (finished) and `plans/backlog/` / `plans/inProgress/` (pending/active).
 
-**Timeline:** 2–3 days
+**Timeline:** Phases 1–10 completed (historical estimate 2–3 days + Phase 10 extension)
 **Stack:** NestJS + Angular + PostgreSQL (pgvector) + MongoDB + Google Gemini
 
 ---
@@ -89,6 +89,7 @@ Key outcomes:
 - **Frontend:** 123 tests pass (coverage 94%+ stmts), lint clean. Knowledge Base management UI at `/knowledge` with create/edit/delete and read-only detail.
 - List API uses `limit` query param (same convention as conversations); response `{ data, pagination }`.
 - No Prisma schema change required (pgvector column already present).
+- Documentation aligned in DOC-1.2 (README, DESIGN, DECISIONS §30, AGENTS).
 
 ---
 
@@ -217,8 +218,9 @@ Phase 10: RAG Knowledge Base Management
 | T-10.3 | Knowledge Base | Backend Knowledge REST API | Backend | Completed | 2–3 |
 | T-10.4 | Knowledge Base | Frontend Knowledge Base List | Frontend | Completed | 2–3 |
 | T-10.5 | Knowledge Base | Frontend Knowledge CRUD UI | Frontend | Completed | 3–4 |
+| DOC-1.2 | Documentation | Align README/DESIGN/DECISIONS/AGENTS with Phase 10 | Docs | Completed | 1–2 |
 
-**Total estimated effort:** 64–90 hours (Phases 1–9 completed; Phase 10 adds ~12–17h for RAG document management)
+**Total estimated effort:** ~65–92 hours (Phases 1–10 + documentation alignment)
 
 ---
 

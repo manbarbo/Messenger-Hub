@@ -4,7 +4,7 @@
 
 This document defines the data model, API contracts, AI pipeline, and frontend views for the MessengerHub AI clinic assistant.
 
-> **Implementation status (2026-10-03):** All phases 1–9 are implemented (domain, persistence, CQRS, LLM/RAG/orchestration, async processing, API layer, frontend dashboard, seed data, testing, structured logging). Sections describing AWS production deployment are the **target design** for future work. Where implementation details differ from an earlier draft of this document, the code is authoritative.
+> **Implementation status (2026-10-03):** All phases 1–10 are implemented (domain, persistence, CQRS, LLM/RAG/orchestration, async processing, API layer, frontend dashboard, seed data, testing, structured logging, **RAG Knowledge Base management**). Sections describing AWS production deployment are the **target design** for future work. Where implementation details differ from an earlier draft of this document, the code is authoritative.
 
 ---
 
@@ -248,6 +248,7 @@ CREATE INDEX "idx_knowledge_docs_embedding" ON "knowledge_documents" USING ivffl
 #### Notes (implementation)
 
 - `embedding` uses pgvector with 768 dimensions (Google `gemini-embedding-001`, requested with explicit `dimensions: 768`). The column remains nullable in Prisma (`Unsupported("vector(768)")`); embeddings are persisted via raw SQL after insert. Full seed data is provided by `T-7.1`.
+- **CRUD (Phase 10):** `KnowledgeRepository` supports `create`, `update`, `delete`, `findById`, and paginated `findMany` (filter `clinicId` + optional `category`). Application handlers (`Create/Update/DeleteKnowledgeDocumentHandler`) orchestrate embedding generation via the domain `EMBEDDING_SERVICE` port — embeddings are **not** stored or edited by clients. On update, the embedding is regenerated only when `title` or `content` changes (category-only updates keep the stored vector).
 - The IVFFlat cosine index (`lists = 100`) is created in the **migration SQL**, not declared in `schema.prisma`. If you regenerate migrations from the schema, re-apply this index manually (or use a raw SQL migration) to avoid drift.
 - Semantic search uses cosine distance: `ORDER BY embedding <=> $1 LIMIT 5`, with results filtered by `1 - (embedding <=> $vec) > 0.7` (`RAG_SIMILARITY_THRESHOLD`).
 - The IVFFlat index is suitable for up to ~1M rows. For larger datasets, switch to HNSW.
@@ -682,7 +683,6 @@ Lists conversations for the dashboard.
       "clinicName": "Clínica Norte",
       "patientPhone": "+573001112233",
       "status": "resolved_by_ai",
-      "messageCount": 6,
       "lastMessageAt": "2026-10-06T03:45:00Z",
       "createdAt": "2026-10-06T03:40:00Z"
     }
@@ -695,6 +695,8 @@ Lists conversations for the dashboard.
   }
 }
 ```
+
+> **Note:** `messageCount` is **not** returned by `ListConversationsHandler` today. The Angular model keeps it optional (`messageCount?: number`) and the inbox renders `—` when absent. Computing counts is a possible follow-up, not part of the current contract.
 
 ### GET /api/conversations/:id
 
@@ -982,23 +984,26 @@ Behavior:
 
 ## Shared
 
-- `LayoutComponent` — sidebar nav with links to Conversations and Simulator
+- `LayoutComponent` — sidebar nav: Conversations, Simulator, **Knowledge Base** (`/knowledge`)
 - `LoadingSpinnerComponent` — reusable loading indicator
 - `ErrorMessageComponent` — reusable error display
 - `PaginationComponent` — reusable pagination
 - `StatusBadgeComponent` — colored badge for conversation status
+- `ConfirmDialogComponent` — confirm/cancel overlay (used by Knowledge Base delete)
 
 ---
 
 # 7. Error Catalog
 
-> **Status (2026-10-02):** Error classes live in `apps/api/src/domain/errors/`. HTTP mapping is implemented via `presentation/filters/domain-exception.filter.ts` (global `APP_FILTER` in `PresentationModule`). Request validation stays Zod-based in controllers (no class-validator pipe). Not every catalog entry has a domain error class yet (`DoctorNotFoundError`, `InvalidTimezoneError`, `KnowledgeBaseEmptyError` remain planned).
+> **Status (2026-10-03):** Error classes live in `apps/api/src/domain/errors/`. HTTP mapping is implemented via `presentation/filters/domain-exception.filter.ts` (global `APP_FILTER` in `PresentationModule`). Request validation stays Zod-based in controllers (no class-validator pipe). Not every catalog entry has a domain error class yet (`DoctorNotFoundError`, `InvalidTimezoneError`, `KnowledgeBaseEmptyError` remain planned).
 
 | Error | HTTP Code | When | Domain class status |
 |-------|-----------|------|---------------------|
 | `SlotAlreadyBookedError` | 409 | Slot was booked between availability check and booking attempt | Implemented |
 | `SlotNotFoundError` | 404 | Requested slot does not exist | Implemented |
 | `ClinicNotFoundError` | 404 | Clinic ID or name does not match any clinic | Implemented |
+| `ConversationNotFoundError` | 404 | Conversation ID does not exist | Implemented |
+| `KnowledgeDocumentNotFoundError` | 404 | Knowledge document ID does not exist (RAG admin CRUD) | Implemented (Phase 10) |
 | `DoctorNotFoundError` | 404 | Doctor ID does not match any doctor | Not yet implemented (planned) |
 | `InvalidTimezoneError` | 400 | Date/time cannot be interpreted in Colombia timezone | Not yet implemented (planned; current code uses fixed UTC-5 helpers) |
 | `PastDateError` | 400 | Attempted to book a slot in the past | Implemented |
