@@ -247,6 +247,11 @@ Unit tests use mock repositories, mock LLM services, and mock event publishers â
 | `GET`  | `/api/conversations`     | Lists conversations for the dashboard           |
 | `GET`  | `/api/conversations/:id` | Gets conversation details and AI traces         |
 | `POST` | `/api/simulator`         | Sends a test message as if from a patient       |
+| `GET`  | `/api/knowledge`         | Lists RAG knowledge documents by clinic         |
+| `GET`  | `/api/knowledge/:id`     | Gets a knowledge document with content          |
+| `POST` | `/api/knowledge`         | Creates a RAG knowledge document                |
+| `PATCH`| `/api/knowledge/:id`     | Updates a RAG knowledge document                |
+| `DELETE`| `/api/knowledge/:id`    | Deletes a RAG knowledge document                |
 
 ## License
 

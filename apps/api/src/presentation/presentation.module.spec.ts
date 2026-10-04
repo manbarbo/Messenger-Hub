@@ -4,18 +4,20 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { APP_FILTER } from '@nestjs/core';
 import { ClinicsController } from './controllers/clinics.controller';
 import { ConversationsController } from './controllers/conversations.controller';
+import { KnowledgeDocumentsController } from './controllers/knowledge-documents.controller';
 import { SimulatorController } from './controllers/simulator.controller';
 import { WebhookController } from './controllers/webhook.controller';
 import { DomainExceptionFilter } from './filters/domain-exception.filter';
 import { PresentationModule } from './presentation.module';
 
 describe('PresentationModule', () => {
-  it('registers WebhookController, ConversationsController, SimulatorController, and ClinicsController', () => {
+  it('registers WebhookController, ConversationsController, SimulatorController, ClinicsController, and KnowledgeDocumentsController', () => {
     const controllers = Reflect.getMetadata('controllers', PresentationModule) as unknown[] | undefined;
     expect(controllers ?? []).toContain(WebhookController);
     expect(controllers ?? []).toContain(ConversationsController);
     expect(controllers ?? []).toContain(SimulatorController);
     expect(controllers ?? []).toContain(ClinicsController);
+    expect(controllers ?? []).toContain(KnowledgeDocumentsController);
   });
 
   it('imports CqrsModule so CommandBus and QueryBus are available to controllers', () => {

@@ -596,7 +596,7 @@ Current Message:
 
 # 5. API Contracts
 
-> **Implementation status (2026-10-03):** `POST /webhooks/messages`, `GET /api/conversations`, `GET /api/conversations/:id`, `POST /api/simulator`, and `GET /api/clinics` are implemented (`presentation/controllers/`). Global exception filter and class-validator `ValidationPipe` remain T-5.2. Note: list responses omit `messageCount` (not computed by `ListConversationsHandler` yet).
+> **Implementation status (2026-10-03):** `POST /webhooks/messages`, `GET /api/conversations`, `GET /api/conversations/:id`, `POST /api/simulator`, `GET /api/clinics`, and knowledge document CRUD (`GET/POST /api/knowledge`, `GET/PATCH/DELETE /api/knowledge/:id`) are implemented (`presentation/controllers/`). Global exception filter maps domain errors including `KnowledgeDocumentNotFoundError` (404). Note: conversation list responses omit `messageCount` (not computed by `ListConversationsHandler` yet).
 
 ## Base URL
 
@@ -783,6 +783,117 @@ Sends a message as if it came from a patient (for testing).
   "conversationId": "uuid"
 }
 ```
+
+### Knowledge Documents (RAG Base) — Phase 10
+
+Admin CRUD for clinic RAG documents used by semantic search. Embeddings are generated server-side (`gemini-embedding-001`, 768 dims) on create and on title/content update.
+
+#### GET /api/knowledge
+
+Lists knowledge documents for a clinic (summaries without `content`/`embedding`).
+
+**Query Parameters:**
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `clinicId` | UUID | Yes | Clinic scope (multi-tenant RAG) |
+| `category` | string | No | Filter by category (e.g. `horarios`) |
+| `page` | number | No | Page number (default: 1) |
+| `limit` | number | No | Items per page (default: 20, max: 100) |
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "clinicId": "uuid",
+      "title": "Horarios de Atención — Clínica Norte",
+      "category": "horarios",
+      "createdAt": "2026-10-01T10:00:00Z",
+      "updatedAt": "2026-10-01T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 12,
+    "totalPages": 1
+  }
+}
+```
+
+**Errors:** `400` when `clinicId` missing or `limit` out of range.
+
+#### GET /api/knowledge/:id
+
+Gets a single document including `content` (no embedding vector).
+
+**Response (200):**
+
+```json
+{
+  "id": "uuid",
+  "clinicId": "uuid",
+  "title": "Horarios de Atención — Clínica Norte",
+  "content": "La Clínica Norte atiende de lunes a viernes...",
+  "category": "horarios",
+  "createdAt": "2026-10-01T10:00:00Z",
+  "updatedAt": "2026-10-01T10:00:00Z"
+}
+```
+
+**Errors:** `404` `KnowledgeDocumentNotFoundError` when missing.
+
+#### POST /api/knowledge
+
+Creates a knowledge document. Server generates the embedding from `title` + `content`.
+
+**Request:**
+
+```json
+{
+  "clinicId": "uuid",
+  "title": "Políticas de Cancelación",
+  "content": "Las citas deben cancelarse con 4 horas de anticipación...",
+  "category": "politicas_cancelacion"
+}
+```
+
+**Response (201):** document detail (same shape as `GET /api/knowledge/:id`).
+
+**Errors:** `400` validation; embedding provider failures surface as domain/LLM errors (502 via filter).
+
+#### PATCH /api/knowledge/:id
+
+Partial update of `title`, `content`, and/or `category`. Embedding is regenerated only when `title` or `content` change.
+
+**Request (any subset):**
+
+```json
+{
+  "title": "Políticas de Cancelación 2026",
+  "content": "Texto actualizado...",
+  "category": "politicas"
+}
+```
+
+**Response (200):** updated document detail.
+
+**Errors:** `400` when body empty or fields blank; `404` when document missing.
+
+#### DELETE /api/knowledge/:id
+
+Deletes a document (removed from RAG retrieval for that clinic).
+
+**Response (200):**
+
+```json
+{ "deleted": true, "documentId": "uuid" }
+```
+
+**Errors:** `404` when document missing.
 
 ---
 

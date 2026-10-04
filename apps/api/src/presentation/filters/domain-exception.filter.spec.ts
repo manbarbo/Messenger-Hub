@@ -6,6 +6,7 @@ import {
   AppointmentNotFoundError,
   ClinicNotFoundError,
   ConversationNotFoundError,
+  KnowledgeDocumentNotFoundError,
   LLMIterationLimitError,
   LLMProviderError,
   PastDateError,
@@ -81,6 +82,22 @@ describe('DomainExceptionFilter', () => {
     expect(json).toHaveBeenCalledWith({
       error: 'ClinicNotFoundError',
       message: 'Clinic clinic-1 was not found',
+    });
+  });
+
+  it('maps KnowledgeDocumentNotFoundError to 404', () => {
+    const { host, status, json } = createHost();
+    filter.catch(new KnowledgeDocumentNotFoundError('doc-9'), host);
+
+    expect(status).toHaveBeenCalledWith(404);
+    expect(json).toHaveBeenCalledWith({
+      error: 'KnowledgeDocumentNotFoundError',
+      message: 'Knowledge document doc-9 was not found',
+    });
+    expect(logger.warn).toHaveBeenCalledWith('Domain error handled', {
+      context: 'DomainExceptionFilter',
+      errorName: 'KnowledgeDocumentNotFoundError',
+      statusCode: 404,
     });
   });
 

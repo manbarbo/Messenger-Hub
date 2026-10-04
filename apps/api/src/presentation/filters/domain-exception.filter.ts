@@ -3,6 +3,7 @@ import {
   AppointmentNotFoundError,
   ClinicNotFoundError,
   ConversationNotFoundError,
+  KnowledgeDocumentNotFoundError,
   LLMIterationLimitError,
   LLMProviderError,
   PastDateError,
@@ -29,6 +30,7 @@ function isDomainError(exception: unknown): exception is Error {
     exception instanceof ClinicNotFoundError ||
     exception instanceof ConversationNotFoundError ||
     exception instanceof AppointmentNotFoundError ||
+    exception instanceof KnowledgeDocumentNotFoundError ||
     exception instanceof PastDateError ||
     exception instanceof ValidationError ||
     exception instanceof LLMProviderError ||
@@ -42,6 +44,7 @@ function statusForDomainError(exception: Error): number {
   if (exception instanceof ClinicNotFoundError) return 404;
   if (exception instanceof ConversationNotFoundError) return 404;
   if (exception instanceof AppointmentNotFoundError) return 404;
+  if (exception instanceof KnowledgeDocumentNotFoundError) return 404;
   if (exception instanceof PastDateError) return 400;
   if (exception instanceof ValidationError) return 400;
   if (exception instanceof LLMProviderError) return 502;
