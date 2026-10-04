@@ -63,10 +63,11 @@ Phase 9 (Structured Logging) is **Completed**.
 | T-9.3 Add Structured Logging Across Application | 28 backend files + 5 frontend files instrumented; all `new Logger(...)` and `console.*` replaced with structured logging |
 | T-9.4 Backend List Clinics | `GET /api/clinics` CQRS query (`ListClinicsQuery` + handler), `ClinicRepository.findAll()`, `PrismaClinicRepository`, `ClinicsController` |
 | T-9.5 Frontend Clinic Dropdowns | Simulator clinic name select + conversation list clinic filter via `ApiService.listClinics()` |
+| T-9.6 Chat-like Patient Simulator | Form → chat mode, reuses `MessageTimelineComponent`, polls `GET /api/conversations/:id` for `assistant:${messageId}`, multi-turn composer |
 
 Key outcomes:
 - **Backend:** All 419 tests pass, lint clean. Zero `new Logger(` or `console.*` in source. All state mutations, external calls (LLM, embedding, DB), queue operations, and error paths logged with structured metadata. `GET /api/clinics` returns clinic `id` + `name` for dashboard dropdowns.
-- **Frontend:** All 81 tests pass (coverage 95%+), lint clean. Components log data loading, user actions, and errors via `LoggerService`. Simulator and conversation list use clinic name dropdowns.
+- **Frontend:** All 87 tests pass (coverage 95%+), lint clean. Components log data loading, user actions, and errors via `LoggerService`. Simulator is a WhatsApp-like chat window after the first message; conversation list filters by clinic name.
 - **Structured logging is now mandatory** for all future implementations (AGENTS.md §18, Definition of Done §24).
 
 ---
@@ -183,8 +184,9 @@ Phase 9: Logging (Day 3 — Evening)
 | T-9.3 | Logging | Add Structured Logging Across Application | Full Stack | Completed | 4–6 |
 | T-9.4 | Clinic Dropdowns | Backend List Clinics (`GET /api/clinics`) | Backend | Completed | 1–2 |
 | T-9.5 | Clinic Dropdowns | Frontend Clinic Dropdowns (Simulator + Conversation List) | Frontend | Completed | 2 |
+| T-9.6 | Chat Simulator | Chat-like Patient Simulator | Frontend | Completed | 2–3 |
 
-**Total estimated effort:** 50–72 hours (feasible in 2–3 days with AI assistance; T-4.4 adds queue-review ops tooling)
+**Total estimated effort:** 52–75 hours (feasible in 2–3 days with AI assistance; T-4.4 adds queue-review ops tooling)
 
 ---
 
@@ -246,6 +248,7 @@ T-9.1 (Backend Logging)
   └── T-9.3 (Add Structured Logging) — depends on both T-9.1 and T-9.2
   └── T-9.4 (Backend List Clinics) — depends on T-2.4 (ClinicRepository)
   └── T-9.5 (Frontend Clinic Dropdowns) — depends on T-9.4 (GET /api/clinics)
+  └── T-9.6 (Chat-like Simulator) — depends on T-9.5 + T-6.3 (message timeline)
 ```
 
 ---
@@ -285,6 +288,7 @@ T-9.1 (Backend Logging)
 | T-9.3 | 28 backend files (handlers, services, repositories, controllers) + 5 frontend files (components, api service) |
 | T-9.4 | `apps/api/src/application/queries/list-clinics/`, `apps/api/src/presentation/controllers/clinics.controller.ts`, `apps/api/src/infrastructure/repositories/prisma-clinic.repository.ts` |
 | T-9.5 | `apps/web/src/app/core/models/clinic.model.ts`, `apps/web/src/app/simulator/`, `apps/web/src/app/conversations/conversation-list/` |
+| T-9.6 | `apps/web/src/app/simulator/` (chat mode, polling, timeline reuse) |
 
 ---
 

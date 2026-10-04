@@ -8,6 +8,7 @@ import { vi } from 'vitest';
 import { ApiService } from '../core/api.service';
 import { AppApiError } from '../core/app-api.error';
 import type { Clinic } from '../core/models/clinic.model';
+import type { ConversationDetail } from '../core/models/conversation.model';
 import type { SimulatorResponse } from '../core/models/api.model';
 import { SimulatorComponent } from './simulator.component';
 
@@ -23,6 +24,45 @@ describe('SimulatorComponent', () => {
     { id: 'clinic-2', name: 'Clínica Sur' },
   ];
 
+  const baseConversation: ConversationDetail = {
+    id: 'conv-1',
+    clinicId: 'clinic-1',
+    clinicName: 'Clínica Norte',
+    patientPhone: '+573001112233',
+    status: 'active',
+    createdAt: '2026-10-06T03:40:00.000Z',
+    updatedAt: '2026-10-06T03:45:00.000Z',
+    lastMessageAt: '2026-10-06T03:45:00.000Z',
+    messages: [],
+    aiTraces: [],
+  };
+
+  const assistantReply: ConversationDetail = {
+    ...baseConversation,
+    messages: [
+      {
+        id: 'msg-1',
+        conversationId: 'conv-1',
+        clinicId: 'clinic-1',
+        direction: 'inbound',
+        role: 'user',
+        content: 'Hola, ¿tienen cita?',
+        messageId: 'wamid.sim.1',
+        createdAt: '2026-10-06T03:40:00.000Z',
+      },
+      {
+        id: 'msg-2',
+        conversationId: 'conv-1',
+        clinicId: 'clinic-1',
+        direction: 'outbound',
+        role: 'assistant',
+        content: '¡Hola! Sí, tenemos disponibilidad.',
+        messageId: 'assistant:wamid.sim.1',
+        createdAt: '2026-10-06T03:40:05.000Z',
+      },
+    ],
+  };
+
   interface SnackbarCall {
     readonly message: string;
     readonly action?: string;
@@ -31,6 +71,7 @@ describe('SimulatorComponent', () => {
 
   let sendSimulatorMessage: ReturnType<typeof vi.fn>;
   let listClinics: ReturnType<typeof vi.fn>;
+  let getConversation: ReturnType<typeof vi.fn>;
   let snackbarCalls: SnackbarCall[];
   let navigateSpy: ReturnType<typeof vi.spyOn>;
   let fixture: ComponentFixture<SimulatorComponent>;
@@ -39,15 +80,21 @@ describe('SimulatorComponent', () => {
   async function setup(options?: {
     send?: ReturnType<typeof vi.fn>;
     clinics?: ReturnType<typeof vi.fn>;
+    getConversation?: ReturnType<typeof vi.fn>;
   }) {
     sendSimulatorMessage = options?.send ?? vi.fn().mockReturnValue(of(successResponse));
     listClinics = options?.clinics ?? vi.fn().mockReturnValue(of(clinics));
+    getConversation =
+      options?.getConversation ?? vi.fn().mockReturnValue(of(assistantReply));
     snackbarCalls = [];
 
     await TestBed.configureTestingModule({
       imports: [SimulatorComponent],
       providers: [
-        { provide: ApiService, useValue: { sendSimulatorMessage, listClinics } },
+        {
+          provide: ApiService,
+          useValue: { sendSimulatorMessage, listClinics, getConversation },
+        },
         provideRouter([{ path: 'conversations/:id', component: class {} }]),
         provideNoopAnimations(),
       ],
@@ -84,7 +131,9 @@ describe('SimulatorComponent', () => {
   }
 
   function submitForm(): void {
-    const form = html().querySelector('[data-testid="simulator-form"]') as HTMLFormElement;
+    const form = html().querySelector(
+      '[data-testid="simulator-form"], [data-testid="simulator-chat-form"]',
+    ) as HTMLFormElement;
     form.dispatchEvent(new Event('submit'));
     fixture.detectChanges();
   }
@@ -94,22 +143,28 @@ describe('SimulatorComponent', () => {
     fixture.detectChanges();
   }
 
+  async function flushAsync(): Promise<void> {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    fixture.detectChanges();
+  }
+
   it('should create', async () => {
     await setup();
     expect(component).toBeTruthy();
   });
 
-  it('loads clinics on init and exposes them for the dropdown', async () => {
+  it('starts in form mode and loads clinics', async () => {
     await setup();
 
+    expect(component.mode()).toBe('form');
     expect(listClinics).toHaveBeenCalledTimes(1);
-    expect(component.clinics()).toEqual(clinics);
-    expect(component.clinicsLoading()).toBe(false);
-    expect(component.clinicsError()).toBeNull();
-    expect(html().querySelector('[data-testid="simulator-clinic"]')).toBeTruthy();
+    expect(html().querySelector('[data-testid="simulator-form"]')).toBeTruthy();
+    expect(html().querySelector('[data-testid="simulator-chat"]')).toBeNull();
   });
 
-  it('renders phone, message, and send controls', async () => {
+  it('renders phone, message, and send controls in form mode', async () => {
     await setup();
     const root = html();
 
@@ -132,35 +187,52 @@ describe('SimulatorComponent', () => {
     );
   });
 
-  it('sends the message without clinicId when default clinic is selected', async () => {
+  it('switches to chat mode after first send and locks phone/clinic', async () => {
     await setup();
 
+    selectClinic('clinic-1');
     setInput('simulator-phone', '+573001112233');
     setInput('simulator-message', 'Hola, ¿tienen cita?');
     submitForm();
+    await flushAsync();
 
     expect(sendSimulatorMessage).toHaveBeenCalledWith({
       from: '+573001112233',
       text: 'Hola, ¿tienen cita?',
+      clinicId: 'clinic-1',
     });
-    expect(component.result()?.conversationId).toBe('conv-1');
-    expect(component.loading()).toBe(false);
-
-    const success = html().querySelector('[data-testid="simulator-success"]');
-    expect(success?.textContent).toContain('conv-1');
-    expect(snackbarCalls).toEqual([
-      {
-        message: 'Message sent to the assistant',
-        action: 'OK',
-        config: expect.objectContaining({ duration: 4000 }),
-      },
-    ]);
+    expect(component.mode()).toBe('chat');
+    expect(component.lockedPhone()).toBe('+573001112233');
+    expect(component.lockedClinicId()).toBe('clinic-1');
+    expect(component.lockedClinicName()).toBe('Clínica Norte');
+    expect(component.conversationId()).toBe('conv-1');
+    expect(component.messages()).toHaveLength(2);
+    expect(component.messages()[0]).toEqual(
+      expect.objectContaining({
+        role: 'user',
+        content: 'Hola, ¿tienen cita?',
+        messageId: 'wamid.sim.1',
+      }),
+    );
+    expect(component.messages()[1]).toEqual(
+      expect.objectContaining({
+        role: 'assistant',
+        messageId: 'assistant:wamid.sim.1',
+      }),
+    );
+    expect(component.pending()).toBe(false);
+    expect(html().querySelector('[data-testid="simulator-chat"]')).toBeTruthy();
+    expect(html().querySelector('[data-testid="simulator-chat-phone"]')?.textContent).toContain(
+      '+573001112233',
+    );
+    expect(html().querySelector('[data-testid="simulator-chat-clinic"]')?.textContent).toContain(
+      'Clínica Norte',
+    );
   });
 
-  it('sends the selected clinicId when a clinic is chosen', async () => {
+  it('omits clinicId when default clinic is selected on first send', async () => {
     await setup();
 
-    selectClinic('clinic-2');
     setInput('simulator-phone', '+573001112233');
     setInput('simulator-message', 'Hola');
     submitForm();
@@ -168,8 +240,146 @@ describe('SimulatorComponent', () => {
     expect(sendSimulatorMessage).toHaveBeenCalledWith({
       from: '+573001112233',
       text: 'Hola',
-      clinicId: 'clinic-2',
     });
+    expect(component.mode()).toBe('chat');
+    expect(component.lockedClinicName()).toBe('Default clinic');
+  });
+
+  it('shows pending state while waiting and stops after assistant reply', async () => {
+    const replySubject = new Subject<ConversationDetail>();
+    await setup({
+      getConversation: vi.fn().mockReturnValue(replySubject),
+    });
+
+    selectClinic('clinic-1');
+    setInput('simulator-phone', '+573001112233');
+    setInput('simulator-message', 'Hola');
+    submitForm();
+    await flushAsync();
+
+    expect(component.pending()).toBe(true);
+    expect(html().querySelector('[data-testid="simulator-chat-pending"]')).toBeTruthy();
+    expect(
+      (html().querySelector('[data-testid="simulator-chat-submit"]') as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    replySubject.next(assistantReply);
+    fixture.detectChanges();
+    await flushAsync();
+
+    expect(component.pending()).toBe(false);
+    expect(component.pollTimedOut()).toBe(false);
+    expect(component.messages()).toHaveLength(2);
+    expect(html().querySelector('[data-testid="simulator-chat-pending"]')).toBeNull();
+  });
+
+  it('sends follow-up messages in the same conversation after reply', async () => {
+    await setup();
+
+    selectClinic('clinic-1');
+    setInput('simulator-phone', '+573001112233');
+    setInput('simulator-message', 'Hola');
+    submitForm();
+    await flushAsync();
+
+    sendSimulatorMessage.mockClear();
+    sendSimulatorMessage.mockReturnValue(
+      of({
+        status: 'accepted',
+        messageId: 'wamid.sim.2',
+        conversationId: 'conv-1',
+      }),
+    );
+    getConversation.mockReturnValue(
+      of({
+        ...assistantReply,
+        messages: [
+          ...assistantReply.messages,
+          {
+            id: 'msg-3',
+            conversationId: 'conv-1',
+            clinicId: 'clinic-1',
+            direction: 'inbound',
+            role: 'user',
+            content: '¿Mañana en la tarde?',
+            messageId: 'wamid.sim.2',
+            createdAt: '2026-10-06T03:50:00.000Z',
+          },
+          {
+            id: 'msg-4',
+            conversationId: 'conv-1',
+            clinicId: 'clinic-1',
+            direction: 'outbound',
+            role: 'assistant',
+            content: 'Sí, tengo espacio a las 3:00 PM.',
+            messageId: 'assistant:wamid.sim.2',
+            createdAt: '2026-10-06T03:50:05.000Z',
+          },
+        ],
+      }),
+    );
+
+    setInput('simulator-chat-message', '¿Mañana en la tarde?');
+    submitForm();
+    await flushAsync();
+
+    expect(sendSimulatorMessage).toHaveBeenCalledWith({
+      from: '+573001112233',
+      text: '¿Mañana en la tarde?',
+      clinicId: 'clinic-1',
+    });
+    expect(component.mode()).toBe('chat');
+    expect(component.messages().some((m) => m.messageId === 'assistant:wamid.sim.2')).toBe(true);
+  });
+
+  it('shows timeout state when assistant reply never arrives', async () => {
+    vi.useFakeTimers();
+    try {
+      await setup({
+        getConversation: vi
+          .fn()
+          .mockReturnValue(of({ ...baseConversation, messages: [] })),
+      });
+
+      selectClinic('clinic-1');
+      setInput('simulator-phone', '+573001112233');
+      setInput('simulator-message', 'Hola');
+      submitForm();
+
+      expect(component.pending()).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(61_000);
+      fixture.detectChanges();
+
+      expect(component.pending()).toBe(false);
+      expect(component.pollTimedOut()).toBe(true);
+      expect(html().querySelector('[data-testid="simulator-chat-timeout"]')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('resets to form mode when new chat is clicked', async () => {
+    await setup();
+
+    setInput('simulator-phone', '+573001112233');
+    setInput('simulator-message', 'Hola');
+    submitForm();
+    await flushAsync();
+
+    const newChat = html().querySelector(
+      '[data-testid="simulator-new-chat"]',
+    ) as HTMLButtonElement;
+    newChat.click();
+    fixture.detectChanges();
+
+    expect(component.mode()).toBe('form');
+    expect(component.messages()).toEqual([]);
+    expect(component.conversationId()).toBe('');
+    expect(component.pending()).toBe(false);
+    expect(component.phone()).toBe('+573001112233');
+    expect(html().querySelector('[data-testid="simulator-form"]')).toBeTruthy();
   });
 
   it('shows clinic load error state and still allows sending with default clinic', async () => {
@@ -214,7 +424,7 @@ describe('SimulatorComponent', () => {
     });
   });
 
-  it('shows error toast and inline error on failure', async () => {
+  it('shows error toast and inline error on form send failure', async () => {
     await setup({
       send: vi.fn().mockReturnValue(
         throwError(
@@ -232,7 +442,7 @@ describe('SimulatorComponent', () => {
     setInput('simulator-message', 'Hola');
     submitForm();
 
-    expect(component.result()).toBeNull();
+    expect(component.mode()).toBe('form');
     expect(html().querySelector('[data-testid="simulator-error"]')?.textContent).toContain(
       'from is required',
     );
@@ -245,7 +455,36 @@ describe('SimulatorComponent', () => {
     ]);
   });
 
-  it('shows loading state while sending', async () => {
+  it('shows chat error when follow-up send fails', async () => {
+    await setup();
+
+    setInput('simulator-phone', '+573001112233');
+    setInput('simulator-message', 'Hola');
+    submitForm();
+
+    sendSimulatorMessage.mockReturnValue(
+      throwError(
+        () =>
+          new AppApiError({
+            error: 'ValidationError',
+            message: 'text is required',
+            status: 400,
+          }),
+      ),
+    );
+
+    setInput('simulator-chat-message', '');
+    component.message.set('');
+    // force empty validation path
+    component.message.set('');
+    submitForm();
+
+    expect(html().querySelector('[data-testid="simulator-chat-message-error"]')?.textContent).toContain(
+      'Message is required',
+    );
+  });
+
+  it('shows loading state while sending from form', async () => {
     await setup({ send: vi.fn().mockReturnValue(new Subject<SimulatorResponse>()) });
 
     setInput('simulator-phone', '+573001112233');
@@ -256,16 +495,15 @@ describe('SimulatorComponent', () => {
     expect(
       (html().querySelector('[data-testid="simulator-submit"]') as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect(html().querySelector('[data-testid="simulator-submit"]')?.textContent).toContain(
-      'Sending',
-    );
   });
 
-  it('navigates to the conversation after view conversation is clicked', async () => {
+  it('navigates to the conversation from chat header', async () => {
     await setup();
 
-    component.result.set(successResponse);
-    fixture.detectChanges();
+    setInput('simulator-phone', '+573001112233');
+    setInput('simulator-message', 'Hola');
+    submitForm();
+    await flushAsync();
 
     const viewButton = html().querySelector(
       '[data-testid="simulator-view-conversation"]',
@@ -273,5 +511,20 @@ describe('SimulatorComponent', () => {
     viewButton.click();
 
     expect(navigateSpy).toHaveBeenCalledWith(['/conversations', 'conv-1']);
+  });
+
+  it('sends selected clinicId when a clinic is chosen in form mode', async () => {
+    await setup();
+
+    selectClinic('clinic-2');
+    setInput('simulator-phone', '+573001112233');
+    setInput('simulator-message', 'Hola');
+    submitForm();
+
+    expect(sendSimulatorMessage).toHaveBeenCalledWith({
+      from: '+573001112233',
+      text: 'Hola',
+      clinicId: 'clinic-2',
+    });
   });
 });

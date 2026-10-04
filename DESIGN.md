@@ -796,7 +796,6 @@ Components:
 
 - `ConversationFiltersComponent` — filter by status dropdown, clinic select
 - `ConversationListComponent` — paginated table with columns: Patient Phone, Clinic, Status, Messages, Last Activity
-- `SimulatorComponent` — form with phone input, text input, clinic select, and send button
 
 Behavior:
 
@@ -807,7 +806,26 @@ Behavior:
 - Shows error message on fetch failure
 - Status badges with color coding: `active` (blue), `resolved_by_ai` (green), `appointment_booked` (purple), `escalated` (red)
 - Pagination controls at bottom
-- Simulator sends to `POST /api/simulator` and shows a toast on success
+
+## View 1b: Patient Simulator (Chat)
+
+Route: `/simulator`
+
+Components:
+
+- `SimulatorComponent` — form mode (phone, clinic select, first message) then chat mode
+- `MessageTimelineComponent` — reused WhatsApp-style message bubbles
+- Clinic select options from `GET /api/clinics` (Default clinic option omits `clinicId`)
+
+Behavior:
+
+- **Form mode:** phone + clinic dropdown + first message; send via `POST /api/simulator`
+- **Chat mode:** after first accepted send, phone and clinic are locked; timeline shows the conversation
+- Polls `GET /api/conversations/:id` every 2s until assistant message `assistant:${inboundMessageId}` appears (max ~60s)
+- Shows “Assistant is processing…” while waiting; timeout shows an informational message
+- Composer sends follow-ups in the same conversation (same phone + clinic)
+- Send disabled while a reply is pending
+- “New chat” resets to form mode; “View Conversation” opens `/conversations/:id`
 
 ## View 2: Conversation Detail
 
