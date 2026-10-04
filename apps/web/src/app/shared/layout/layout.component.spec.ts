@@ -24,6 +24,7 @@ describe('LayoutComponent', () => {
     expect(compiled.textContent).toContain('MessengerHub');
     expect(compiled.querySelector('a[routerlink="/conversations"]')).toBeTruthy();
     expect(compiled.querySelector('a[routerlink="/simulator"]')).toBeTruthy();
+    expect(compiled.querySelector('a[routerlink="/knowledge"]')).toBeTruthy();
   });
 
   it('should toggle the sidenav', () => {

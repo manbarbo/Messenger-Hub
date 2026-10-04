@@ -83,7 +83,7 @@ Enable operators to **consult, create, update, and delete** RAG `knowledge_docum
 | T-10.1 Backend Knowledge Repository CRUD | Backend | **Completed (2026-10-03):** `KnowledgeRepository` + Prisma adapter (`findById`, `findMany` paginated, `update`, `delete`); `KnowledgeDocumentNotFoundError`; embedding raw SQL on update; 429 API tests pass |
 | T-10.2 Backend Knowledge CQRS | Backend | **Completed (2026-10-03):** Create/Update/Delete commands + List/Get queries; handlers use `EMBEDDING_SERVICE` (re-embed when title/content change); DTOs without embeddings; 447 API tests pass |
 | T-10.3 Backend Knowledge REST API | Backend | **Completed (2026-10-03):** `KnowledgeDocumentsController` — `GET/POST /api/knowledge`, `GET/PATCH/DELETE /api/knowledge/:id`; Zod validation; `DomainExceptionFilter` maps `KnowledgeDocumentNotFoundError` → 404; DESIGN.md + README; 459 API tests pass |
-| T-10.4 Frontend Knowledge List | Frontend | `/knowledge` route + nav; clinic/category filters; table + pagination + detail consult; `ApiService.listKnowledgeDocuments` |
+| T-10.4 Frontend Knowledge List | Frontend | **Completed (2026-10-03):** `/knowledge` route + nav; clinic/category filters; table + pagination + detail dialog; `ApiService.listKnowledgeDocuments`/`getKnowledgeDocument`; 103 web tests pass |
 | T-10.5 Frontend Knowledge CRUD | Frontend | Create/edit form, delete confirmation, list refresh; form validation; tests |
 
 Key design constraints for Phase 10:
@@ -217,7 +217,7 @@ Phase 10: RAG Knowledge Base Management
 | T-10.1 | Knowledge Base | Backend Knowledge Repository CRUD | Backend | Completed | 2–3 |
 | T-10.2 | Knowledge Base | Backend Knowledge CQRS Commands & Queries | Backend | Completed | 3–4 |
 | T-10.3 | Knowledge Base | Backend Knowledge REST API | Backend | Completed | 2–3 |
-| T-10.4 | Knowledge Base | Frontend Knowledge Base List | Frontend | Backlog | 2–3 |
+| T-10.4 | Knowledge Base | Frontend Knowledge Base List | Frontend | Completed | 2–3 |
 | T-10.5 | Knowledge Base | Frontend Knowledge CRUD UI | Frontend | Backlog | 3–4 |
 
 **Total estimated effort:** 64–90 hours (Phases 1–9 completed; Phase 10 adds ~12–17h for RAG document management)

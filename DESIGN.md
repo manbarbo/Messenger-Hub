@@ -938,6 +938,24 @@ Behavior:
 - Send disabled while a reply is pending
 - “New chat” resets to form mode; “View Conversation” opens `/conversations/:id`
 
+## View 1c: Knowledge Base (RAG Documents)
+
+Route: `/knowledge` (Phase 10)
+
+Components:
+
+- `KnowledgeListComponent` — clinic select, category filter, paginated table (Title, Category, Updated At, Actions), read-only detail dialog
+- Nav link **Knowledge Base** in the layout sidenav
+
+Behavior:
+
+- Loads clinics from `GET /api/clinics` and auto-selects the first clinic
+- Lists documents via `GET /api/knowledge?clinicId=…` (summaries without content)
+- Category filter options derived from categories present in the current page
+- “View” loads `GET /api/knowledge/:id` and opens a read-only detail panel (title, category, clinic, content)
+- Loading skeleton, empty states (no clinic selected / no documents), error + retry
+- Mutations (create/edit/delete) are delivered in T-10.5
+
 ## View 2: Conversation Detail
 
 Route: `/conversations/:id`

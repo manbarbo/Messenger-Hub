@@ -119,6 +119,63 @@ describe('ApiService', () => {
     });
   });
 
+  describe('listKnowledgeDocuments', () => {
+    it('requests the knowledge endpoint with clinicId and optional filters', () => {
+      const summaries = [
+        {
+          id: 'doc-1',
+          clinicId: 'clinic-1',
+          title: 'Horarios',
+          category: 'horarios',
+          createdAt: '2026-10-01T10:00:00.000Z',
+          updatedAt: '2026-10-02T10:00:00.000Z',
+        },
+      ];
+      let response: unknown;
+      service
+        .listKnowledgeDocuments({ clinicId: 'clinic-1', category: 'horarios', page: 1, limit: 20 })
+        .subscribe((body) => (response = body));
+
+      const request = httpMock.expectOne(
+        (req) =>
+          req.url === `${environment.apiUrl}/api/knowledge` &&
+          req.params.get('clinicId') === 'clinic-1' &&
+          req.params.get('category') === 'horarios' &&
+          req.params.get('page') === '1' &&
+          req.params.get('limit') === '20',
+      );
+      expect(request.request.method).toBe('GET');
+
+      request.flush({ data: summaries, pagination: { page: 1, limit: 20, total: 1, totalPages: 1 } });
+      expect(response).toEqual({
+        data: summaries,
+        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      });
+    });
+  });
+
+  describe('getKnowledgeDocument', () => {
+    it('requests knowledge document detail by id', () => {
+      const detail = {
+        id: 'doc-1',
+        clinicId: 'clinic-1',
+        title: 'Horarios',
+        content: 'Lunes a viernes',
+        category: 'horarios',
+        createdAt: '2026-10-01T10:00:00.000Z',
+        updatedAt: '2026-10-02T10:00:00.000Z',
+      };
+      let response: unknown;
+      service.getKnowledgeDocument('doc-1').subscribe((body) => (response = body));
+
+      const request = httpMock.expectOne(`${environment.apiUrl}/api/knowledge/doc-1`);
+      expect(request.request.method).toBe('GET');
+
+      request.flush(detail);
+      expect(response).toEqual(detail);
+    });
+  });
+
   describe('sendSimulatorMessage', () => {
     it('posts simulator message and returns accepted payload', () => {
       const body = { from: '+573009998877', text: 'Hola' };

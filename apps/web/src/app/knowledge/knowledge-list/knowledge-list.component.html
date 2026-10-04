@@ -1,0 +1,187 @@
+<section class="knowledge-base" aria-labelledby="knowledge-base-title">
+  <header class="knowledge-base__header">
+    <h1 id="knowledge-base-title">Knowledge Base</h1>
+
+    <div class="knowledge-base__filters">
+      <mat-form-field
+        appearance="outline"
+        subscriptSizing="dynamic"
+        class="knowledge-base__filter"
+      >
+        <mat-label>Clinic</mat-label>
+        <mat-select
+          data-testid="knowledge-clinic-filter"
+          [value]="clinicFilter()"
+          [disabled]="clinicsLoading()"
+          (selectionChange)="onClinicFilterChange($event.value)"
+        >
+          <mat-option value="">Select a clinic</mat-option>
+          @for (clinic of clinics(); track clinic.id) {
+            <mat-option [value]="clinic.id">{{ clinic.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field
+        appearance="outline"
+        subscriptSizing="dynamic"
+        class="knowledge-base__filter"
+      >
+        <mat-label>Category</mat-label>
+        <mat-select
+          data-testid="knowledge-category-filter"
+          [value]="categoryFilter()"
+          [disabled]="clinicFilter().length === 0"
+          (selectionChange)="onCategoryFilterChange($event.value)"
+        >
+          <mat-option value="">All categories</mat-option>
+          @for (category of categoryOptions(); track category) {
+            <mat-option [value]="category">{{ category }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </header>
+
+  @if (clinicsError(); as clinicsError) {
+    <p class="knowledge-base__filter-error" data-testid="knowledge-clinics-error" role="alert">
+      {{ clinicsError }}
+    </p>
+  }
+
+  @if (loading()) {
+    <div
+      class="knowledge-skeleton"
+      data-testid="knowledge-skeleton"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span class="knowledge-skeleton__label">Loading knowledge documents…</span>
+      @for (row of skeletonRows; track row) {
+        <div class="knowledge-skeleton__row">
+          <span class="knowledge-skeleton__cell knowledge-skeleton__cell--title"></span>
+          <span class="knowledge-skeleton__cell knowledge-skeleton__cell--category"></span>
+          <span class="knowledge-skeleton__cell knowledge-skeleton__cell--updated"></span>
+          <span class="knowledge-skeleton__cell knowledge-skeleton__cell--actions"></span>
+        </div>
+      }
+    </div>
+  } @else if (error(); as errorMessage) {
+    <app-error-message
+      data-testid="knowledge-error"
+      title="Could not load knowledge documents"
+      [message]="errorMessage"
+      [canRetry]="true"
+      (retry)="loadDocuments()"
+    />
+  } @else if (clinicFilter().length === 0) {
+    <div class="knowledge-base__empty" data-testid="knowledge-empty">
+      Select a clinic to view RAG knowledge documents
+    </div>
+  } @else if (documents().length === 0) {
+    <div class="knowledge-base__empty" data-testid="knowledge-empty">
+      No knowledge documents found for this clinic
+    </div>
+  } @else {
+    <div class="knowledge-table-wrap">
+      <table class="knowledge-table" data-testid="knowledge-table">
+        <thead>
+          <tr>
+            <th scope="col">Title</th>
+            <th scope="col">Category</th>
+            <th scope="col">Updated At</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (document of documents(); track document.id) {
+            <tr class="knowledge-table__row" data-testid="knowledge-row">
+              <td>{{ document.title }}</td>
+              <td>{{ document.category }}</td>
+              <td>{{ document.updatedAt | date: 'medium' }}</td>
+              <td>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  data-testid="knowledge-view"
+                  (click)="openDetail(document)"
+                >
+                  View
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <app-pagination
+      data-testid="knowledge-pagination"
+      [page]="pagination().page"
+      [totalPages]="pagination().totalPages"
+      [total]="pagination().total"
+      [limit]="pagination().limit"
+      (pageChange)="onPageChange($event)"
+    />
+  }
+</section>
+
+@if (selectedDocument() || detailLoading() || detailError()) {
+  <div class="knowledge-detail-overlay" data-testid="knowledge-detail-overlay">
+    <div
+      class="knowledge-detail"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="knowledge-detail-title"
+    >
+      <header class="knowledge-detail__header">
+        <h2 id="knowledge-detail-title">Document</h2>
+        <button
+          mat-icon-button
+          type="button"
+          data-testid="knowledge-detail-close"
+          aria-label="Close document detail"
+          (click)="closeDetail()"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      </header>
+
+      @if (detailLoading()) {
+        <p class="knowledge-detail__status" data-testid="knowledge-detail-loading">
+          Loading document…
+        </p>
+      } @else if (detailError(); as detailError) {
+        <app-error-message
+          data-testid="knowledge-detail-error"
+          title="Could not load document"
+          [message]="detailError"
+          [canRetry]="false"
+        />
+      } @else if (selectedDocument(); as document) {
+        <dl class="knowledge-detail__meta">
+          <div>
+            <dt>Title</dt>
+            <dd data-testid="knowledge-detail-title-value">{{ document.title }}</dd>
+          </div>
+          <div>
+            <dt>Category</dt>
+            <dd data-testid="knowledge-detail-category">{{ document.category }}</dd>
+          </div>
+          <div>
+            <dt>Clinic</dt>
+            <dd data-testid="knowledge-detail-clinic">{{ clinicName(document.clinicId) }}</dd>
+          </div>
+          <div>
+            <dt>Updated</dt>
+            <dd>{{ document.updatedAt | date: 'medium' }}</dd>
+          </div>
+        </dl>
+        <article class="knowledge-detail__content" data-testid="knowledge-detail-content">
+          {{ document.content }}
+        </article>
+      }
+    </div>
+  </div>
+}

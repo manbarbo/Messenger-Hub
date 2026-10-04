@@ -11,6 +11,11 @@ import type {
   SimulatorRequest,
   SimulatorResponse,
 } from './models/api.model';
+import type {
+  KnowledgeDocumentDetail,
+  KnowledgeDocumentSummary,
+  ListKnowledgeDocumentsParams,
+} from './models/knowledge-document.model';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -21,6 +26,39 @@ export class ApiService {
   listClinics(): Observable<readonly Clinic[]> {
     this.logger.debug('Listing clinics', 'ApiService');
     return this.http.get<readonly Clinic[]>(`${this.baseUrl}/api/clinics`);
+  }
+
+  listKnowledgeDocuments(
+    params: ListKnowledgeDocumentsParams,
+  ): Observable<ListConversationsResponse<KnowledgeDocumentSummary>> {
+    this.logger.debug('Listing knowledge documents', 'ApiService', {
+      clinicId: params.clinicId,
+      category: params.category,
+      page: params.page,
+      limit: params.limit,
+    });
+
+    let httpParams = new HttpParams().set('clinicId', params.clinicId);
+
+    if (params.category !== undefined) {
+      httpParams = httpParams.set('category', params.category);
+    }
+    if (params.page !== undefined) {
+      httpParams = httpParams.set('page', String(params.page));
+    }
+    if (params.limit !== undefined) {
+      httpParams = httpParams.set('limit', String(params.limit));
+    }
+
+    return this.http.get<ListConversationsResponse<KnowledgeDocumentSummary>>(
+      `${this.baseUrl}/api/knowledge`,
+      { params: httpParams },
+    );
+  }
+
+  getKnowledgeDocument(id: string): Observable<KnowledgeDocumentDetail> {
+    this.logger.debug('Fetching knowledge document', 'ApiService', { id });
+    return this.http.get<KnowledgeDocumentDetail>(`${this.baseUrl}/api/knowledge/${id}`);
   }
 
   listConversations(

@@ -24,6 +24,14 @@
       >
         <span matListItemTitle>Simulator</span>
       </a>
+      <a
+        mat-list-item
+        routerLink="/knowledge"
+        routerLinkActive="layout__nav-link--active"
+        (click)="closeSidenavOnMobile()"
+      >
+        <span matListItemTitle>Knowledge Base</span>
+      </a>
     </mat-nav-list>
   </mat-sidenav>
 
