@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-messengerhub-tobe-aws-20261004-231602/candidate.json",
+    "sha256": "13d2a49ec030c33cbd8e24204beee4dba3757e0316384fb4c86c31551368d146",
+    "bytes": 14518
+  },
+  "artifact": {
+    "path": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-messengerhub-tobe-aws-20261004-231602/messengerhub-tobe-aws.html",
+    "sha256": "0d30ca97b4dcdbf408d9e862588a79f43feff071f5dc5dc3f42de9e3e0682bb7",
+    "bytes": 790807
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-messengerhub-tobe-aws-20261004-231602/messengerhub-tobe-aws.finalize.json",
+    "summaryReceipt": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-messengerhub-tobe-aws-20261004-231602/messengerhub-tobe-aws.finalize-summary.json",
+    "browserCheckReceipt": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-messengerhub-tobe-aws-20261004-231602/messengerhub-tobe-aws.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.0.1",
+    "availableVersion": "3.0.1",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-05T04:23:43.462Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2215,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 3,
+      "routesOverSuggestedStretch": 2
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "alb-api",
+            "from": "alb",
+            "to": "api",
+            "label": "/health",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "bends": 4,
+          "stretch": 1.348
+        },
+        {
+          "relationship": {
+            "id": "api-atlas",
+            "from": "api",
+            "to": "atlas",
+            "label": "conversaciones · mensajes",
+            "collectionIndex": 11,
+            "artifactIndex": 12
+          },
+          "bends": 2,
+          "stretch": 1.711
+        },
+        {
+          "relationship": {
+            "id": "worker-atlas",
+            "from": "worker",
+            "to": "atlas",
+            "label": "AI traces",
+            "collectionIndex": 15,
+            "artifactIndex": 16
+          },
+          "bends": 3,
+          "stretch": 1.207
+        },
+        {
+          "relationship": {
+            "id": "nat-gemini",
+            "from": "nat",
+            "to": "gemini",
+            "label": "egreso HTTPS vía NAT",
+            "collectionIndex": 17,
+            "artifactIndex": 18
+          },
+          "bends": 2,
+          "stretch": 1.601,
+          "directCorridorBlockers": [
+            {
+              "id": "rds",
+              "label": "RDS PostgreSQL 16",
+              "box": [
+                860,
+                380,
+                150,
+                64
+              ]
+            }
+          ]
+        },
+        {
+          "relationship": {
+            "id": "api-obs",
+            "from": "api",
+            "to": "observability",
+            "label": "logs · métricas",
+            "collectionIndex": 18,
+            "artifactIndex": 19
+          },
+          "bends": 3,
+          "stretch": 1.336
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "alb → api needs 4 bends: move node alb or api so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "api → atlas needs 2 bends: move node api or atlas so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "worker → atlas needs 3 bends: move node worker or atlas so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "api → observability needs 3 bends: move node api or observability so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

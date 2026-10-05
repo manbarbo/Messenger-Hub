@@ -1,0 +1,457 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "MessengerHub — Arquitectura TOBE AWS Producción",
+    "subtitle": "Objetivo: 50 clínicas · 20k msgs/día · us-east-1 · Terraform en infra/terraform · alineado con docs/aws-architecture.md",
+    "output": ".archify/architecture-messengerhub-tobe-aws-20261004-231602/messengerhub-tobe-aws.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:manbarbo/Messenger-Hub.git",
+      "link_mode": "local-only",
+      "revision": "263e499a4503ad902747642ae8b495584490b886"
+    },
+    "views": [
+      {
+        "id": "flujo-whatsapp",
+        "label": "Flujo WhatsApp → LLM",
+        "focus": ["whatsapp", "alb", "api", "sqs", "worker", "gemini"],
+        "note": "Camino principal de mensaje entrante hasta la respuesta del asistente"
+      },
+      {
+        "id": "flujo-dashboard",
+        "label": "Flujo Dashboard",
+        "focus": ["dashboard", "cloudfront", "s3web", "alb", "api"],
+        "note": "SPA en S3+CloudFront con mismo origen /api hacia el ALB"
+      },
+      {
+        "id": "datos-y-cola",
+        "label": "Datos y cola",
+        "focus": ["api", "worker", "rds", "atlas", "sqs", "dlq"],
+        "note": "Doble base (Postgres fuente de verdad + Mongo documentos) y desacople SQS/DLQ"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "whatsapp",
+      "type": "external",
+      "label": "WhatsApp Cloud API",
+      "sublabel": "webhook entrante",
+      "pos": [24, 80],
+      "size": [130, 56],
+      "sources": [
+        { "path": "docs/aws-architecture.md", "line": 63, "end_line": 63, "label": "webhook → ALB" },
+        { "path": "docs/aws-architecture.md", "line": 88, "end_line": 88, "label": "POST /webhooks" }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "type": "external",
+      "label": "Usuarios Dashboard",
+      "sublabel": "clínicas · UTC-5",
+      "pos": [24, 320],
+      "size": [130, 56],
+      "sources": [
+        { "path": "docs/aws-architecture.md", "line": 64, "end_line": 64, "label": "Dashboard Users" },
+        { "path": "docs/aws-architecture.md", "line": 91, "end_line": 91, "label": "S3 + CloudFront" }
+      ]
+    },
+    {
+      "id": "dr_sa",
+      "type": "cloud",
+      "label": "sa-east-1 · DR",
+      "sublabel": "pilot-light · ECS off",
+      "pos": [24, 720],
+      "size": [140, 56],
+      "sources": [
+        { "path": "infra/terraform/README.md", "line": 30, "end_line": 37, "label": "pilot-light DR" },
+        { "path": "infra/terraform/modules/frontend/main.tf", "line": 60, "end_line": 77, "label": "CRR opcional" }
+      ]
+    },
+    {
+      "id": "cloudfront",
+      "type": "cloud",
+      "label": "CloudFront",
+      "sublabel": "SPA + rutas /api /webhooks",
+      "pos": [252, 320],
+      "size": [140, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/frontend/main.tf", "line": 89, "end_line": 166, "label": "distribución + behaviors" }
+      ]
+    },
+    {
+      "id": "s3web",
+      "type": "cloud",
+      "label": "S3 · build Angular",
+      "sublabel": "assets estáticos OAC",
+      "pos": [252, 460],
+      "size": [140, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/frontend/main.tf", "line": 1, "end_line": 58, "label": "bucket web + policy CF" }
+      ]
+    },
+    {
+      "id": "ecr",
+      "type": "cloud",
+      "label": "ECR",
+      "sublabel": "api + worker images",
+      "pos": [420, 70],
+      "size": [120, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/ecr/main.tf", "line": 1, "end_line": 27, "label": "repositorios ECR" }
+      ]
+    },
+    {
+      "id": "sqs",
+      "type": "messagebus",
+      "label": "SQS",
+      "sublabel": "message-processing",
+      "pos": [860, 70],
+      "size": [140, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/queue/main.tf", "line": 10, "end_line": 23, "label": "cola principal" },
+        { "path": "docs/aws-architecture.md", "line": 105, "end_line": 105, "label": "decouple 202 vs LLM" }
+      ]
+    },
+    {
+      "id": "dlq",
+      "type": "messagebus",
+      "label": "DLQ",
+      "sublabel": "3 reintentos",
+      "pos": [1100, 70],
+      "size": [120, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/queue/main.tf", "line": 1, "end_line": 8, "label": "DLQ" },
+        { "path": "infra/terraform/modules/queue/main.tf", "line": 15, "end_line": 18, "label": "redrive policy" }
+      ]
+    },
+    {
+      "id": "alb",
+      "type": "cloud",
+      "label": "ALB",
+      "sublabel": "HTTPS :443 · /health",
+      "pos": [560, 200],
+      "size": [120, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/ecs/main.tf", "line": 163, "end_line": 202, "label": "ALB + target group" },
+        { "path": "docs/aws-architecture.md", "line": 101, "end_line": 101, "label": "por qué ALB" }
+      ]
+    },
+    {
+      "id": "nat",
+      "type": "cloud",
+      "label": "NAT Gateway",
+      "sublabel": "egreso privado",
+      "pos": [480, 360],
+      "size": [120, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/networking/main.tf", "line": 55, "end_line": 74, "label": "NAT + EIP" },
+        { "path": "docs/aws-architecture.md", "line": 146, "end_line": 146, "label": "Worker → Gemini vía NAT" }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "ECS API · NestJS",
+      "sublabel": "Fargate · HTTP :3000",
+      "pos": [760, 200],
+      "size": [150, 64],
+      "sources": [
+        { "path": "infra/terraform/modules/ecs/main.tf", "line": 253, "end_line": 300, "label": "task definition API" },
+        { "path": "infra/terraform/modules/ecs/main.tf", "line": 341, "end_line": 373, "label": "servicio API + ALB" }
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "ECS Worker · NestJS",
+      "sublabel": "Fargate · sin HTTP",
+      "pos": [980, 200],
+      "size": [150, 64],
+      "sources": [
+        { "path": "infra/terraform/modules/ecs/main.tf", "line": 302, "end_line": 337, "label": "task worker-main" },
+        { "path": "infra/terraform/modules/ecs/main.tf", "line": 375, "end_line": 400, "label": "servicio worker" },
+        { "path": "infra/terraform/modules/ecs/main.tf", "line": 431, "end_line": 456, "label": "autoscaling SQS" }
+      ]
+    },
+    {
+      "id": "atlas",
+      "type": "database",
+      "label": "MongoDB Atlas M10",
+      "sublabel": "conversaciones · traces",
+      "pos": [1220, 200],
+      "size": [130, 56],
+      "sources": [
+        { "path": "docs/aws-architecture.md", "line": 72, "end_line": 72, "label": "Atlas M10" },
+        { "path": "infra/terraform/README.md", "line": 28, "end_line": 28, "label": "fuera de Terraform" },
+        { "path": "infra/terraform/modules/secrets/main.tf", "line": 37, "end_line": 50, "label": "URI en secrets" }
+      ]
+    },
+    {
+      "id": "gemini",
+      "type": "external",
+      "label": "Google Gemini API",
+      "sublabel": "chat + embeddings",
+      "pos": [1220, 360],
+      "size": [130, 56],
+      "sources": [
+        { "path": "docs/aws-architecture.md", "line": 77, "end_line": 78, "label": "LLM + NAT egress" },
+        { "path": "infra/terraform/modules/secrets/main.tf", "line": 1, "end_line": 20, "label": "credenciales LLM" }
+      ]
+    },
+    {
+      "id": "secrets",
+      "type": "security",
+      "label": "Secrets Manager",
+      "sublabel": "/llm /db /mongo /app",
+      "pos": [760, 460],
+      "size": [150, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/secrets/main.tf", "line": 1, "end_line": 72, "label": "4 secretos" },
+        { "path": "infra/terraform/modules/ecs/main.tf", "line": 10, "end_line": 32, "label": "inyección en tasks" }
+      ]
+    },
+    {
+      "id": "rds",
+      "type": "database",
+      "label": "RDS PostgreSQL 16",
+      "sublabel": "pgvector · Multi-AZ",
+      "pos": [860, 380],
+      "size": [150, 64],
+      "sources": [
+        { "path": "infra/terraform/modules/data/main.tf", "line": 26, "end_line": 63, "label": "RDS Multi-AZ" },
+        { "path": "infra/terraform/modules/data/main.tf", "line": 10, "end_line": 24, "label": "pg16 + pgvector" }
+      ]
+    },
+    {
+      "id": "observability",
+      "type": "cloud",
+      "label": "CloudWatch + X-Ray",
+      "sublabel": "logs · métricas",
+      "pos": [980, 500],
+      "size": [150, 56],
+      "sources": [
+        { "path": "infra/terraform/modules/observability/main.tf", "line": 1, "end_line": 91, "label": "logs + alarms" },
+        { "path": "docs/aws-architecture.md", "line": 109, "end_line": 109, "label": "observabilidad prod" }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "AWS us-east-1 · producción",
+      "wraps": ["cloudfront", "s3web", "ecr", "sqs", "dlq", "alb", "nat", "api", "worker", "secrets", "rds", "observability"],
+      "pad": 16
+    },
+    {
+      "kind": "security-group",
+      "label": "subnets públicas (2 AZ)",
+      "wraps": ["alb", "nat"],
+      "pad": 12
+    },
+    {
+      "kind": "security-group",
+      "label": "subnets privadas (2 AZ) · ECS + RDS",
+      "wraps": ["api", "worker", "rds"],
+      "pad": 14
+    }
+  ],
+  "connections": [
+    {
+      "id": "wa-webhook",
+      "from": "whatsapp",
+      "to": "alb",
+      "label": "webhook HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "dash-cf",
+      "from": "dashboard",
+      "to": "cloudfront",
+      "label": "dashboard HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cf-s3",
+      "from": "cloudfront",
+      "to": "s3web",
+      "label": "assets Angular",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cf-alb",
+      "from": "cloudfront",
+      "to": "alb",
+      "label": "/api/* + /webhooks/*",
+      "variant": "emphasis"
+    },
+    {
+      "id": "s3-dr",
+      "from": "s3web",
+      "to": "dr_sa",
+      "label": "CRR opcional",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "alb-api",
+      "from": "alb",
+      "to": "api",
+      "label": "/health",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ecr-api",
+      "from": "ecr",
+      "to": "api",
+      "label": "imágenes Fargate",
+      "variant": "dashed"
+    },
+    {
+      "id": "sec-api",
+      "from": "secrets",
+      "to": "api",
+      "label": "secretos → env vars"
+    },
+    {
+      "id": "sec-worker",
+      "from": "secrets",
+      "to": "worker",
+      "label": "secretos → env vars",
+      "fromSide": "right",
+      "toSide": "right",
+      "via": [[1160, 488], [1160, 232], [1130, 232]]
+    },
+    {
+      "id": "api-sqs",
+      "from": "api",
+      "to": "sqs",
+      "label": "enqueue · 202",
+      "variant": "emphasis",
+      "labelAt": [900, 62]
+    },
+    {
+      "id": "api-rds",
+      "from": "api",
+      "to": "rds",
+      "label": "SQL · pgvector"
+    },
+    {
+      "id": "api-atlas",
+      "from": "api",
+      "to": "atlas",
+      "label": "conversaciones · mensajes",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [[835, 40], [1285, 40], [1285, 200]]
+    },
+    {
+      "id": "sqs-worker",
+      "from": "sqs",
+      "to": "worker",
+      "label": "poll · autoscale",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sqs-dlq",
+      "from": "sqs",
+      "to": "dlq",
+      "label": "maxReceiveCount = 3"
+    },
+    {
+      "id": "worker-rds",
+      "from": "worker",
+      "to": "rds",
+      "label": "RAG · citas"
+    },
+    {
+      "id": "worker-atlas",
+      "from": "worker",
+      "to": "atlas",
+      "label": "AI traces",
+      "fromSide": "top",
+      "toSide": "left",
+      "via": [[1055, 180], [1180, 180], [1180, 228], [1220, 228]]
+    },
+    {
+      "id": "worker-gemini",
+      "from": "worker",
+      "to": "gemini",
+      "label": "tool calling + embeddings",
+      "variant": "emphasis"
+    },
+    {
+      "id": "nat-gemini",
+      "from": "nat",
+      "to": "gemini",
+      "label": "egreso HTTPS vía NAT",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [[540, 640], [1285, 640], [1285, 416]]
+    },
+    {
+      "id": "api-obs",
+      "from": "api",
+      "to": "observability",
+      "label": "logs · métricas",
+      "variant": "dashed",
+      "fromSide": "left",
+      "toSide": "bottom",
+      "via": [[700, 232], [700, 600], [1055, 600], [1055, 556]]
+    },
+    {
+      "id": "worker-obs",
+      "from": "worker",
+      "to": "observability",
+      "label": "logs · métricas",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Flujo principal (TOBE)",
+      "items": [
+        "WhatsApp → ALB → ECS API: Zod, dedupe message_id, inserta en Mongo, encola y responde 202",
+        "SQS → ECS Worker: historial, tool-calling LLM (máx. 5 iteraciones), persiste mensaje + AITrace",
+        "Worker escala 2→6 por SQS ApproximateNumberOfMessagesVisible; fallos → DLQ tras 3 reintentos",
+        "Postgres commits primero para citas; estado de conversación en Mongo es eventualmente consistente"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "IaC Terraform (infra/terraform)",
+      "items": [
+        "Módulos: networking, ecr, data, queue, secrets, ecs, frontend, observability",
+        "us-east-1 primario + sa-east-1 pilot-light (ECS/RDS off, CRR de S3)",
+        "Secrets vía TF_VAR (db_password, llm_api_key, mongodb_uri) — nunca en git",
+        "MongoDB Atlas no está en Terraform: cluster en Atlas UI + URI en secrets /mongo"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Multi-tenancy (diseño)",
+      "items": [
+        "clinicId en tablas Postgres y colecciones Mongo; RAG siempre filtrado por clínica",
+        "Target: RLS en Postgres + JWT con claim clinicId + API keys por clínica (webhook)",
+        "Aislamiento lógico + enforcement en BD + en aplicación (defense in depth)",
+        "Sin joins cross-tenant en disponibilidad, citas ni knowledge"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Gaps TOBE vs código actual",
+      "items": [
+        "Cola: hoy BullMQ/Redis en dev; prod objetivo SQS + DLQ (adaptador SqsQueueService pendiente)",
+        "Secrets: hoy .env/dotenv; prod Secrets Manager inyectado en task roles ECS",
+        "Compute: hoy pnpm dev local; prod ECS Fargate API + Worker separados",
+        "Auth/RLS y webhooks con API key por clínica: diseñados, no implementados aún"
+      ]
+    }
+  ]
+}

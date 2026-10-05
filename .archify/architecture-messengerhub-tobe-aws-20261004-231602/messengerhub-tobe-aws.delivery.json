@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "b05e53ad-e71e-44a7-926c-38dc0d6d6b75",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-messengerhub-tobe-aws-20261004-231602/candidate.json",
+  "output": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-messengerhub-tobe-aws-20261004-231602/messengerhub-tobe-aws.html",
+  "specification": {
+    "sha256": "13d2a49ec030c33cbd8e24204beee4dba3757e0316384fb4c86c31551368d146",
+    "bytes": 14518
+  },
+  "artifact": {
+    "sha256": "0d30ca97b4dcdbf408d9e862588a79f43feff071f5dc5dc3f42de9e3e0682bb7",
+    "bytes": 790807
+  }
+}
