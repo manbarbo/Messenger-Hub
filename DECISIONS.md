@@ -898,7 +898,7 @@ CREATE INDEX "idx_knowledge_docs_embedding"
 - **Multi-client platform** — Separate configuration per clinic (custom system prompts, knowledge bases, working hours). Tenant-aware rate limiting.
 - **Conversation memory** — Summarize long conversations to stay within LLM context windows. Persist conversation summaries for quick context loading.
 - **Human handoff** — Integration with a live chat system (e.g., WhatsApp Business API, Twilio) for real human escalation.
-- **Infrastructure as Code** — Full CDK or Terraform definitions for all AWS resources. Currently designed but not coded.
+- **Infrastructure as Code** — Full CDK or Terraform definitions for all AWS resources. **Terraform now exists in `infra/terraform/`** (modules + us-east-1 primary + sa-east-1 pilot-light DR + Dockerfiles); not yet applied to a live account.
 - **Evaluation dataset** — A curated set of test conversations with expected responses for regression testing.
 
 ---

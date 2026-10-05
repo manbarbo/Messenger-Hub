@@ -1019,6 +1019,8 @@ Infrastructure errors (database connection, queue failures) are caught and mappe
 
 # 8. AWS Architecture
 
+> **Full production design:** See [`docs/aws-architecture.md`](./docs/aws-architecture.md) for the AWS production architecture (VPC/networking, ALB + S3/CloudFront hosting, updated cost estimate, multi-tenancy status vs code, and failure matrix) targeting **50 clinics / 20k messages per day**. The sections below are the original baseline design.
+
 ## Architecture Diagram (Mermaid)
 
 ```mermaid

@@ -1,0 +1,13 @@
+# Pilot-light DR environment (sa-east-1)
+# ECS is OFF by default. Use after primary stack exists.
+
+aws_region           = "sa-east-1"
+enable_ecs           = false
+enable_nat_gateway   = false
+enable_rds_standby   = false
+enable_rds_multi_az  = false
+
+# Leave empty until you activate failover
+# ecr_api_url    = ""
+# ecr_worker_url = ""
+# certificate_arn = ""

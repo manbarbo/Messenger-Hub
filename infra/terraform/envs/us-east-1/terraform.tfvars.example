@@ -1,0 +1,42 @@
+# Copy to terraform.tfvars (gitignored) or export as TF_VAR_*.
+# NEVER commit real secrets.
+
+aws_region  = "us-east-1"
+image_tag   = "latest"
+enable_ecs  = true
+
+# TLS (optional) — leave empty for HTTP-only ALB
+certificate_arn = ""
+
+# RDS
+rds_instance_class    = "db.t3.medium"
+rds_allocated_storage = 100
+db_name               = "messenger_hub"
+db_username           = "messenger"
+# db_password      = "set-via-TF_VAR_db_password"
+# deletion_protection = true
+
+# LLM
+llm_base_url    = "https://generativelanguage.googleapis.com/v1beta/openai/"
+llm_model       = "gemini-3.8-flash"
+embedding_model = "gemini-embedding-001"
+# llm_api_key  = "set-via-TF_VAR_llm_api_key"
+
+# MongoDB Atlas connection string (from Atlas UI)
+# mongodb_uri = "mongodb+srv://user:pass@cluster.mongodb.net/messenger_hub?retryWrites=true&w=majority"
+
+default_clinic_id = ""
+cors_origin       = "*"
+
+# Scaling
+api_desired_count   = 2
+worker_desired_count = 2
+
+# Observability
+log_retention_days = 30
+enable_xray        = true
+
+# S3 CRR to sa-east-1 (enable after DR bucket exists)
+enable_s3_crr                  = false
+s3_crr_destination_bucket_arn  = ""
+s3_crr_role_arn                = ""

@@ -47,3 +47,12 @@ redisdata/
 tmp/
 temp/
 *.tmp
+
+# Terraform (local state, cache, real tfvars — keep lock files in VCS)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+**/terraform.tfvars
+**/*.auto.tfvars
+crash.log
+crash.*.log

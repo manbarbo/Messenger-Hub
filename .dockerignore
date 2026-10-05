@@ -1,0 +1,17 @@
+# Build context is the monorepo root — ignore heavy/irrelevant paths
+**/node_modules
+**/dist
+**/.git
+**/.env
+**/.env.*
+!**/.env.example
+**/logs
+**/coverage
+**/*.log
+**/.DS_Store
+plans
+docs
+infra
+**/*.spec.ts
+**/*.test.ts
+apps/web
