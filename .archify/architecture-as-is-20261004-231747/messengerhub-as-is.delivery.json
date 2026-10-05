@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "be480046-f495-4525-8cf0-6d8c16db4d77",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-as-is-20261004-231747/candidate.json",
+  "output": "/Users/manuelbarona/Documents/projects/IA/MessengerHub/.archify/architecture-as-is-20261004-231747/messengerhub-as-is.html",
+  "specification": {
+    "sha256": "4c6022046ec5a1d090993de6ad5271adfed488790cbc652ee9f0bbe862b51f2e",
+    "bytes": 41819
+  },
+  "artifact": {
+    "sha256": "e7503eabb977df868e78eb0ae006af4821da7c4482ce030ef3d71bedc5ea0155",
+    "bytes": 783885
+  }
+}
